@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Complaints — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+.complaint-card{
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;
+  border-left:4px solid var(--danger);transition:var(--transition);
+}
+.complaint-card:hover{box-shadow:var(--shadow)}
+.complaint-card.resolved{border-left-color:var(--success);opacity:.7}
+.star-row{display:flex;gap:2px;font-size:1rem;margin-bottom:6px}
+.star-fill{color:#F59E0B}.star-empty{color:var(--gray-200)}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.issue-chip{
+  padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;
+  background:var(--danger-l);color:var(--danger);
+}
+.meta-row{
+  display:flex;gap:14px;flex-wrap:wrap;
+  font-size:.775rem;color:var(--text-muted);margin-top:6px;
+}
+.pending-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:.72rem;font-weight:700;padding:2px 8px;
+  border-radius:10px;background:var(--warning-l);color:var(--warning);
+}
+.resolved-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:.72rem;font-weight:700;padding:2px 8px;
+  border-radius:10px;background:var(--success-l);color:var(--success);
+}
+.resolve-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:var(--radius);
+  background:var(--green);color:#fff;border:none;
+  font-size:.85rem;font-weight:700;cursor:pointer;
+  transition:var(--transition);margin-top:12px;
+}
+.resolve-btn:hover{background:#0a7d54;transform:translateY(-1px)}
+.resolve-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.coupon-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:.8rem;font-weight:700;padding:4px 12px;
+  border-radius:10px;background:var(--brand-l);color:var(--brand);
+  margin-top:8px;font-family:monospace;letter-spacing:.05em;
+}
+.stat-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:24px;
+}
+.stat-box{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:14px;text-align:center;
+  box-shadow:var(--shadow-sm);
+}
+.stat-val{font-size:1.6rem;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:.75rem;color:var(--text-muted);font-weight:500}
+.note-input{
+  width:100%;padding:9px 12px;border:1.5px solid var(--border);
+  border-radius:var(--radius);font-size:.875rem;resize:vertical;
+  font-family:inherit;background:var(--surface-2);margin-top:10px;
+  outline:none;transition:var(--transition);
+}
+.note-input:focus{border-color:var(--brand)}
+.empty-complaints{
+  text-align:center;padding:60px 20px;color:var(--text-muted);
+}
+.empty-complaints .icon{font-size:3rem;margin-bottom:12px}
+.honest-toggle-banner{
+  background:linear-gradient(135deg,var(--ink),#1e2a3b);
+  border-radius:var(--radius-lg);padding:16px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;color:#fff;gap:16px;
+}
+.toggle-sw{position:relative;width:46px;height:26px;flex-shrink:0}
+.toggle-sw input{opacity:0;width:0;height:0;position:absolute}
+.sw-slider{
+  position:absolute;inset:0;background:rgba(255,255,255,.2);
+  border-radius:13px;cursor:pointer;transition:var(--transition);
+}
+.sw-slider::before{
+  content:'';position:absolute;height:20px;width:20px;
+  left:3px;bottom:3px;background:#fff;border-radius:50%;
+  transition:var(--transition);box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+input:checked+.sw-slider{background:#0E9E6A}
+input:checked+.sw-slider::before{transform:translateX(20px)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{
+  padding:9px 20px;font-size:.875rem;font-weight:500;color:var(--text-muted);
+  cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:var(--transition-fast);
+}
+.tab:hover{color:var(--text-primary)}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Honest Review Mode</h1>
+          <p>Manage low-rating complaints, resolve them, and win back customers</p>
+        </div>
+      </div>
+
+      <!-- Honest Mode Toggle Banner -->
+      <div class="honest-toggle-banner">
+        <div>
+          <div style="font-size:1rem;font-weight:700;margin-bottom:3px">
+            🔄 Honest Review Mode
+          </div>
+          <div style="font-size:.825rem;color:rgba(255,255,255,.6)">
+            When ON — customers who rate 1-3★ also see a Google Review option after payment, with a personal apology and 3% next-visit coupon after you resolve their complaint.
+          </div>
+        </div>
+        <label class="toggle-sw">
+          <input type="checkbox" id="honest-mode-toggle" onchange="toggleHonestMode(this)">
+          <span class="sw-slider"></span>
+        </label>
+      </div>
+
+      <!-- Stats strip — from GET /feedback/resolution-stats -->
+      <div class="stat-strip" id="stat-strip">
+        <div class="stat-box"><div class="stat-val" id="st-total">—</div><div class="stat-lbl">Total complaints</div></div>
+        <div class="stat-box"><div class="stat-val" id="st-pending" style="color:var(--warning)">—</div><div class="stat-lbl">Pending resolution</div></div>
+        <div class="stat-box"><div class="stat-val" id="st-resolved" style="color:var(--success)">—</div><div class="stat-lbl">Resolved</div></div>
+        <div class="stat-box"><div class="stat-val" id="st-returned" style="color:var(--brand)">—</div><div class="stat-lbl">Customers returned</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('pending',this)">
+          <i class="ti ti-clock"></i> Pending
+          <span id="pending-count-badge" style="background:var(--danger-l);color:var(--danger);font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px">0</span>
+        </button>
+        <button class="tab" onclick="switchTab('resolved',this)">
+          <i class="ti ti-check"></i> Resolved
+        </button>
+      </div>
+
+      <!-- PENDING tab -->
+      <div class="tab-panel active" id="tab-pending">
+        <div id="pending-list">
+          <div class="skeleton skeleton-block" style="height:120px;margin-bottom:10px"></div>
+          <div class="skeleton skeleton-block" style="height:120px;margin-bottom:10px"></div>
+          <div class="skeleton skeleton-block" style="height:120px"></div>
+        </div>
+      </div>
+
+      <!-- RESOLVED tab -->
+      <div class="tab-panel" id="tab-resolved">
+        <div id="resolved-list">
+          <div class="skeleton skeleton-block" style="height:120px;margin-bottom:10px"></div>
+          <div class="skeleton skeleton-block" style="height:120px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Resolve modal -->
+<div class="modal-overlay" id="resolve-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Mark complaint as resolved</span>
+      <button class="modal-close" onclick="Modal.close('resolve-modal')">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info mb-4">
+        <i class="ti ti-info-circle"></i>
+        <div>
+          Once you click <strong>Resolve</strong>, a personal WhatsApp message will be sent
+          to the customer explaining what was fixed, along with a 3% next-visit coupon code.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">What did you fix? (optional but recommended)</label>
+        <textarea
+          id="resolution-note"
+          class="note-input"
+          rows="3"
+          placeholder="e.g. We retrained our kitchen staff on food temperature standards and set up a new quality check before every dish leaves the kitchen."
+        ></textarea>
+        <span class="form-hint">
+          This is for your records only — not sent to the customer.
+          The customer receives a warm personal apology message.
+        </span>
+      </div>
+      <div id="resolve-error" class="alert alert-danger mt-4" style="display:none">
+        <i class="ti ti-alert-circle"></i>
+        <span id="resolve-error-msg"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('resolve-modal')">Cancel</button>
+      <button class="btn btn-success" id="confirm-resolve-btn" onclick="confirmResolve()">
+        <i class="ti ti-check"></i> Mark Resolved & Send WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let currentResolveId = null;
+let allFeedback      = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'honest-complaints.html', title:'Honest Review Mode' });
+  await Promise.all([loadStats(), loadHonestModeSetting(), loadPending(), loadResolved()]);
+});
+
+// ── TOGGLE HONEST MODE — PATCH /auth/honest-review-mode ───────
+async function loadHonestModeSetting() {
+  try {
+    const res = await API.auth.me();
+    document.getElementById('honest-mode-toggle').checked = !!res.data?.honest_review_mode;
+  } catch { /* non-fatal */ }
+}
+
+async function toggleHonestMode(checkbox) {
+  try {
+    await API.auth.toggleHonestMode(checkbox.checked);
+    Toast.success('Honest Review Mode ' + (checkbox.checked ? 'enabled ✅' : 'disabled'));
+  } catch (err) {
+    checkbox.checked = !checkbox.checked;
+    Toast.error(err.message);
+  }
+}
+
+// ── STATS — GET /feedback/resolution-stats ────────────────────
+async function loadStats() {
+  try {
+    const res = await API.feedback.resolutionStats();
+    const d   = res.data || {};
+    document.getElementById('st-total').textContent    = d.total_complaints  ?? '0';
+    document.getElementById('st-pending').textContent  = d.pending           ?? '0';
+    document.getElementById('st-resolved').textContent = d.total_resolved    ?? '0';
+    document.getElementById('st-returned').textContent = d.customers_returned ?? '0';
+  } catch { /* non-fatal */ }
+}
+
+// ── PENDING — GET /feedback/unresolved ────────────────────────
+async function loadPending() {
+  try {
+    const res  = await API.feedback.unresolved();
+    const rows = res.data || [];
+    document.getElementById('pending-count-badge').textContent = rows.length;
+
+    if (!rows.length) {
+      document.getElementById('pending-list').innerHTML = `
+        <div class="empty-complaints">
+          <div class="icon">🎉</div>
+          <h3 style="font-size:1rem;margin-bottom:6px">No pending complaints!</h3>
+          <p style="font-size:.875rem">All low-rating complaints have been resolved.</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('pending-list').innerHTML = rows.map(fb => `
+      <div class="complaint-card" id="card-${fb.id}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+
+            <!-- Rating stars -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <div class="star-row">
+                ${Array(5).fill(0).map((_,i) =>
+                  `<span class="${i < fb.rating ? 'star-fill' : 'star-empty'}">★</span>`
+                ).join('')}
+              </div>
+              <span class="pending-badge">
+                <i class="ti ti-clock" style="font-size:.75rem"></i>
+                ${fb.days_pending === 0 ? 'Today' : fb.days_pending + ' day' + (fb.days_pending > 1 ? 's' : '') + ' ago'}
+              </span>
+            </div>
+
+            <!-- Complaint chips -->
+            ${fb.complaints?.length ? `
+              <div class="chip-wrap">
+                ${fb.complaints.map(c => `<span class="issue-chip">⚠️ ${c}</span>`).join('')}
+              </div>` : ''}
+
+            <!-- Comment -->
+            ${fb.comment ? `
+              <div style="font-size:.875rem;color:var(--text-secondary);font-style:italic;margin-bottom:6px;">
+                "${fb.comment}"
+              </div>` : ''}
+
+            <!-- Meta -->
+            <div class="meta-row">
+              <span>Bill #${fb.bill_number}</span>
+              <span>${Format.currency(fb.bill_total)}</span>
+              ${fb.customer_name ? `<span>👤 ${fb.customer_name}</span>` : ''}
+              ${fb.customer_phone ? `<span>📱 ${fb.customer_phone}</span>` : ''}
+              <span><i class="ti ti-calendar" style="font-size:.75rem"></i> ${Format.date(fb.created_at)}</span>
+            </div>
+
+            <!-- Resolve button -->
+            <button class="resolve-btn" onclick="openResolveModal('${fb.id}')">
+              <i class="ti ti-check"></i> Mark Resolved & Send WhatsApp
+            </button>
+          </div>
+
+          <!-- Rating number -->
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:2rem;font-weight:800;color:var(--danger);line-height:1">${fb.rating}</div>
+            <div style="font-size:.7rem;color:var(--text-muted)">/ 5</div>
+          </div>
+        </div>
+      </div>`).join('');
+
+  } catch (err) {
+    document.getElementById('pending-list').innerHTML =
+      `<div class="alert alert-danger"><i class="ti ti-alert-circle"></i> ${err.message}</div>`;
+  }
+}
+
+// ── RESOLVED — GET /feedback (filter resolved=true, rating<=3) ─
+async function loadResolved() {
+  try {
+    const res  = await API.feedback.list({ limit: 50 });
+    const rows = (res.data || []).filter(f => +f.rating <= 3 && f.resolved);
+
+    if (!rows.length) {
+      document.getElementById('resolved-list').innerHTML = `
+        <div class="empty-complaints">
+          <div class="icon">📋</div>
+          <p style="font-size:.875rem">No resolved complaints yet.</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('resolved-list').innerHTML = rows.map(fb => `
+      <div class="complaint-card resolved">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <div class="star-row">
+                ${Array(5).fill(0).map((_,i) =>
+                  `<span class="${i < +fb.rating ? 'star-fill' : 'star-empty'}">★</span>`
+                ).join('')}
+              </div>
+              <span class="resolved-badge">
+                <i class="ti ti-check" style="font-size:.75rem"></i> Resolved
+              </span>
+              ${fb.wa_resolution_sent ? `
+                <span style="font-size:.72rem;color:var(--green);font-weight:600">
+                  <i class="ti ti-brand-whatsapp" style="font-size:.75rem"></i> WA sent
+                </span>` : ''}
+            </div>
+
+            ${fb.complaints?.length ? `
+              <div class="chip-wrap">
+                ${fb.complaints.map(c => `<span class="issue-chip">⚠️ ${c}</span>`).join('')}
+              </div>` : ''}
+
+            <div class="meta-row">
+              <span>Bill #${fb.bill_number}</span>
+              ${fb.customer_name ? `<span>👤 ${fb.customer_name}</span>` : ''}
+              ${fb.customer_phone ? `<span>📱 ${fb.customer_phone}</span>` : ''}
+              <span>Resolved ${Format.date(fb.resolved_at)}</span>
+            </div>
+
+            ${fb.coupon_code ? `
+              <div class="coupon-pill">
+                <i class="ti ti-ticket" style="font-size:.8rem"></i>
+                ${fb.coupon_code}
+                ${fb.coupon_redeemed ? ' ✅ Redeemed' : ' · Not used yet'}
+              </div>` : ''}
+          </div>
+
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:2rem;font-weight:800;color:var(--success);line-height:1">${fb.rating}</div>
+            <div style="font-size:.7rem;color:var(--text-muted)">/ 5</div>
+          </div>
+        </div>
+      </div>`).join('');
+
+  } catch (err) {
+    document.getElementById('resolved-list').innerHTML =
+      `<div class="alert alert-danger"><i class="ti ti-alert-circle"></i> ${err.message}</div>`;
+  }
+}
+
+// ── OPEN RESOLVE MODAL ────────────────────────────────────────
+function openResolveModal(feedbackId) {
+  currentResolveId = feedbackId;
+  document.getElementById('resolution-note').value = '';
+  document.getElementById('resolve-error').style.display = 'none';
+  Modal.open('resolve-modal');
+  document.getElementById('resolution-note').focus();
+}
+
+// ── CONFIRM RESOLVE — POST /feedback/:id/resolve ──────────────
+async function confirmResolve() {
+  if (!currentResolveId) return;
+  const btn  = document.getElementById('confirm-resolve-btn');
+  const note = document.getElementById('resolution-note').value.trim();
+  document.getElementById('resolve-error').style.display = 'none';
+  Form.setLoading(btn, true);
+
+  try {
+    const res = await API.feedback.resolve(currentResolveId, note || null);
+    Modal.close('resolve-modal');
+    Toast.success(
+      `✅ Resolved! WhatsApp sent to customer with coupon ${res.coupon_code}`
+    );
+    // Refresh all data
+    await Promise.all([loadStats(), loadPending(), loadResolved()]);
+  } catch (err) {
+    document.getElementById('resolve-error-msg').textContent = err.message;
+    document.getElementById('resolve-error').style.display = 'flex';
+  } finally {
+    Form.setLoading(btn, false);
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

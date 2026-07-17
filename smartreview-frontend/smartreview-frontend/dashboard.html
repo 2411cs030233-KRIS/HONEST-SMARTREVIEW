@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── Table grid ── */
+.table-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.table-cell{border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 6px;text-align:center;cursor:pointer;transition:var(--transition);background:var(--white)}
+.table-cell:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.table-cell.occupied {border-color:var(--danger); background:var(--danger-l)}
+.table-cell.available{border-color:var(--success);background:var(--success-l)}
+.table-cell.reserved {border-color:var(--warning);background:var(--warning-l)}
+.table-num{font-size:.7rem;font-weight:700;color:var(--text-muted);margin-bottom:2px}
+.table-dot{font-size:1rem;line-height:1}
+.table-staff{font-size:.65rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── Activity list ── */
+.activity-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.activity-row:last-child{border-bottom:none}
+.activity-icon{width:34px;height:34px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+/* ── Top items ── */
+.top-item-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.top-item-row:last-child{border-bottom:none}
+/* ── Quick actions ── */
+.qa{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:var(--transition);text-decoration:none;color:inherit;background:var(--white)}
+.qa:hover{border-color:var(--brand);background:var(--brand-l)}
+.qa-icon{width:38px;height:38px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+/* ── Status legend ── */
+.legend{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text-muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+/* ── Refresh indicator ── */
+.refresh-tag{font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 id="greeting">Dashboard</h1>
+          <p id="date-label" class="text-muted"></p>
+        </div>
+        <div class="page-header-right">
+          <span class="refresh-tag" id="refresh-tag">
+            <i class="ti ti-refresh"></i> Auto-refreshes in <span id="refresh-countdown">60</span>s
+          </span>
+          <select class="form-select" id="date-range" style="width:130px" onchange="loadDashboard()">
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+          </select>
+          <a href="billing.html" class="btn btn-primary">
+            <i class="ti ti-plus"></i> New bill
+          </a>
+        </div>
+      </div>
+
+      <!-- KPI strip — data from GET /analytics/overview -->
+      <div class="stats-grid" id="kpi-grid">
+        <div class="stat-card"><div class="stat-icon" style="background:var(--success-l);color:var(--success)"><i class="ti ti-currency-rupee"></i></div><div class="stat-label">Total revenue</div><div class="stat-value" id="kpi-revenue">—</div><div class="stat-change neutral" id="kpi-revenue-sub">Loading…</div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--brand-l);color:var(--brand)"><i class="ti ti-receipt"></i></div><div class="stat-label">Bills generated</div><div class="stat-value" id="kpi-bills">—</div><div class="stat-change neutral" id="kpi-bills-sub">Loading…</div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--warning-l);color:var(--warning)"><i class="ti ti-star"></i></div><div class="stat-label">Avg rating</div><div class="stat-value" id="kpi-rating">—</div><div class="stat-change neutral" id="kpi-rating-sub">Loading…</div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:var(--info-l);color:var(--info)"><i class="ti ti-brand-google"></i></div><div class="stat-label">Google reviews</div><div class="stat-value" id="kpi-reviews">—</div><div class="stat-change neutral" id="kpi-reviews-sub">Loading…</div></div>
+      </div>
+
+      <!-- Charts row — revenue + payment methods -->
+      <div class="content-grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Revenue trend</span>
+            <select class="form-select" id="chart-days" style="width:100px;padding:5px 10px;font-size:.8rem" onchange="loadRevenueChart()">
+              <option value="7">7 days</option>
+              <option value="14">14 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </div>
+          <!-- data from GET /analytics/revenue-chart -->
+          <!-- rows: [{ date, bills, revenue, avg_bill, avg_rating }] -->
+          <div style="height:200px;position:relative">
+            <canvas id="revenue-chart"></canvas>
+            <div id="revenue-chart-empty" class="empty-state" style="display:none;padding:20px">
+              <div class="empty-state-icon" style="font-size:1.8rem">📊</div>
+              <p>No revenue data yet. Start creating bills!</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Payment methods</span>
+            <!-- data from GET /analytics/payment-methods -->
+            <!-- rows: [{ method, count, revenue, pct }] -->
+            <span class="badge badge-neutral" id="pm-total-label">—</span>
+          </div>
+          <div style="height:200px;position:relative">
+            <canvas id="payment-chart"></canvas>
+            <div id="payment-chart-empty" class="empty-state" style="display:none;padding:20px">
+              <div class="empty-state-icon" style="font-size:1.8rem">💳</div>
+              <p>No payment data yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tables + Quick actions + Activity -->
+      <div style="display:grid;grid-template-columns:1fr 200px 1fr;gap:16px;margin-bottom:20px">
+
+        <!-- Table floor map — data from GET /staff/table-assignments -->
+        <!-- rows: [{ table_id, table_number, status, staff_id, staff_name }] -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Table status</span>
+            <span class="text-sm text-muted"><span id="occupied-count">—</span> occupied</span>
+          </div>
+          <div class="table-grid" id="table-grid">
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+            <div class="skeleton skeleton-block" style="height:64px"></div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span>Occupied</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--success)"></span>Available</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--warning)"></span>Reserved</span>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Quick actions</span></div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <a href="billing.html" class="qa"><div class="qa-icon" style="background:var(--brand-l);color:var(--brand)"><i class="ti ti-receipt"></i></div><div><div style="font-size:.83rem;font-weight:600">New bill</div><div class="text-xs text-muted">Create + QR</div></div></a>
+            <a href="feedback.html" class="qa"><div class="qa-icon" style="background:var(--success-l);color:var(--success)"><i class="ti ti-star"></i></div><div><div style="font-size:.83rem;font-weight:600">Feedback</div><div class="text-xs text-muted" id="qa-fb-sub">View inbox</div></div></a>
+            <a href="menu.html" class="qa"><div class="qa-icon" style="background:var(--warning-l);color:var(--warning)"><i class="ti ti-tools-kitchen-2"></i></div><div><div style="font-size:.83rem;font-weight:600">Menu</div><div class="text-xs text-muted">Add / edit items</div></div></a>
+            <a href="inventory.html" class="qa"><div class="qa-icon" style="background:var(--info-l);color:var(--info)"><i class="ti ti-package"></i></div><div><div style="font-size:.83rem;font-weight:600">Inventory</div><div class="text-xs text-muted" id="qa-inv-sub">Check stock</div></div></a>
+            <a href="analytics.html" class="qa"><div class="qa-icon" style="background:var(--danger-l);color:var(--danger)"><i class="ti ti-chart-bar"></i></div><div><div style="font-size:.83rem;font-weight:600">Analytics</div><div class="text-xs text-muted">AI insights</div></div></a>
+          </div>
+        </div>
+
+        <!-- Recent bills — data from GET /bills?limit=6 -->
+        <!-- rows: [{ bill_number, total, status, table_number, created_at }] -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent bills</span>
+            <a href="billing.html" class="text-sm" style="color:var(--brand)">View all</a>
+          </div>
+          <div id="activity-list">
+            <div class="skeleton skeleton-block" style="height:50px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-block" style="height:50px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-block" style="height:50px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top items + Feedback summary -->
+      <div class="content-grid-2">
+
+        <!-- Top menu items — data from GET /analytics/menu-performance -->
+        <!-- rows: [{ id, name, emoji, price, total_orders, total_revenue, orders_rank }] -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Top menu items</span>
+            <a href="analytics.html" class="text-sm" style="color:var(--brand)">Full report</a>
+          </div>
+          <div id="top-items">
+            <div class="skeleton skeleton-text" style="height:40px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-text" style="height:40px;margin-bottom:8px"></div>
+            <div class="skeleton skeleton-text" style="height:40px"></div>
+          </div>
+        </div>
+
+        <!-- Feedback summary — data from GET /feedback/summary -->
+        <!-- { total_feedback, avg_rating, positive_count, negative_count,
+               google_reviews_count, discounts_unlocked } -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Feedback (last 30 days)</span>
+            <a href="feedback.html" class="text-sm" style="color:var(--brand)">View all</a>
+          </div>
+          <div id="feedback-summary">
+            <div class="skeleton skeleton-block" style="height:120px"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+// Auto-refresh every 60 seconds
+let refreshTimer = null;
+let countdownTimer = null;
+let countdown = 60;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!API.requireAuth()) return;
+
+  buildLayout({ page:'dashboard.html', title:'Dashboard' });
+  setGreeting();
+  loadDashboard();
+  startAutoRefresh();
+});
+
+function setGreeting() {
+  const h    = new Date().getHours();
+  const time = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+  const user = API.getUser();
+  const name = user?.owner_name || user?.name || '';
+  document.getElementById('greeting').textContent = `${time}${name ? ', ' + name.split(' ')[0] : ''}! 👋`;
+  document.getElementById('date-label').textContent =
+    new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+
+function startAutoRefresh() {
+  clearInterval(refreshTimer);
+  clearInterval(countdownTimer);
+  countdown = 60;
+  countdownTimer = setInterval(() => {
+    countdown--;
+    const el = document.getElementById('refresh-countdown');
+    if (el) el.textContent = countdown;
+    if (countdown <= 0) { countdown = 60; loadDashboard(); }
+  }, 1000);
+}
+
+// ── LOAD ALL DASHBOARD DATA IN PARALLEL ─────────────────────
+async function loadDashboard() {
+  // Fire all 7 API calls at once — each section renders independently
+  await Promise.allSettled([
+    loadKPIs(),
+    loadRevenueChart(),
+    loadPaymentChart(),
+    loadTables(),
+    loadRecentBills(),
+    loadTopItems(),
+    loadFeedbackSummary(),
+  ]);
+}
+
+// ── KPIs — GET /analytics/overview ──────────────────────────
+// Response: { data: { total_bills, total_revenue, avg_bill_value, avg_rating,
+//              positive_reviews, negative_reviews, google_reviews,
+//              discounts_given, discount_amount } }
+async function loadKPIs() {
+  const range = document.getElementById('date-range').value;
+  // Map range selector to date params
+  const now = new Date();
+  let from;
+  if (range === 'today') {
+    from = now.toISOString().slice(0,10);
+  } else if (range === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    from = d.toISOString().slice(0,10);
+  } else {
+    const d = new Date(now); d.setDate(d.getDate() - 30);
+    from = d.toISOString().slice(0,10);
+  }
+  const to = now.toISOString().slice(0,10);
+
+  try {
+    const res = await API.analytics.overview({ from, to });
+    const d   = res.data || {};
+
+    document.getElementById('kpi-revenue').textContent     = Format.currency(d.total_revenue, true);
+    document.getElementById('kpi-bills').textContent       = Format.number(d.total_bills);
+    document.getElementById('kpi-rating').textContent      = d.avg_rating > 0 ? Format.rating(d.avg_rating) + ' ★' : '—';
+    document.getElementById('kpi-reviews').textContent     = '+' + Format.number(d.google_reviews || 0);
+    document.getElementById('kpi-revenue-sub').textContent = `Avg bill ${Format.currency(d.avg_bill_value || 0)}`;
+    document.getElementById('kpi-bills-sub').textContent   = `Discount given: ${Format.currency(d.discount_amount || 0)}`;
+    document.getElementById('kpi-rating-sub').textContent  = `${Format.number(d.total_bills)} ratings total`;
+    document.getElementById('kpi-reviews-sub').textContent = `${Format.number(d.discounts_given || 0)} discounts unlocked`;
+
+    // Also update quick action badge
+    const fbCount = (d.negative_reviews || 0);
+    if (fbCount > 0) document.getElementById('qa-fb-sub').textContent = fbCount + ' complaints';
+
+  } catch (err) {
+    ['kpi-revenue','kpi-bills','kpi-rating','kpi-reviews'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('kpi-revenue-sub').textContent = 'Could not load';
+  }
+}
+
+// ── REVENUE CHART — GET /analytics/revenue-chart?days=N ─────
+// Response: { data: [{ date, bills, revenue, avg_bill, avg_rating }] }
+async function loadRevenueChart() {
+  const days = document.getElementById('chart-days').value;
+  try {
+    const res  = await API.analytics.revenueChart(days);
+    const rows = res.data || [];
+
+    if (!rows.length) {
+      document.getElementById('revenue-chart').style.display = 'none';
+      document.getElementById('revenue-chart-empty').style.display = 'flex';
+      return;
+    }
+    document.getElementById('revenue-chart').style.display = 'block';
+    document.getElementById('revenue-chart-empty').style.display = 'none';
+
+    // Format dates as "12 Jul" for labels
+    const labels = rows.map(r => new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+    Charts.bar('revenue-chart', labels, rows.map(r => +r.revenue), 'Revenue ₹', '#4A3CCC');
+  } catch {
+    document.getElementById('revenue-chart').style.display = 'none';
+    document.getElementById('revenue-chart-empty').style.display = 'flex';
+    document.getElementById('revenue-chart-empty').querySelector('p').textContent = 'Could not load chart';
+  }
+}
+
+// ── PAYMENT METHODS — GET /analytics/payment-methods ─────────
+// Response: { data: [{ method, count, revenue, pct }] }
+async function loadPaymentChart() {
+  try {
+    const res  = await API.analytics.paymentMethods();
+    const rows = res.data || [];
+
+    if (!rows.length) {
+      document.getElementById('payment-chart').style.display = 'none';
+      document.getElementById('payment-chart-empty').style.display = 'flex';
+      document.getElementById('pm-total-label').textContent = '0 transactions';
+      return;
+    }
+    document.getElementById('payment-chart').style.display = 'block';
+    document.getElementById('payment-chart-empty').style.display = 'none';
+
+    const total = rows.reduce((a, r) => a + (+r.count || 0), 0);
+    document.getElementById('pm-total-label').textContent = Format.number(total) + ' txns';
+
+    const METHOD_COLORS = { upi:'#4A3CCC', card:'#0E9E6A', cash:'#C47F1A', unknown:'#9CA3AF', razorpay:'#0891B2' };
+    Charts.doughnut(
+      'payment-chart',
+      rows.map(r => (r.method || 'unknown').toUpperCase() + ` (${r.pct}%)`),
+      rows.map(r => +r.count),
+      rows.map(r => METHOD_COLORS[r.method] || '#9CA3AF')
+    );
+  } catch {
+    document.getElementById('payment-chart').style.display = 'none';
+    document.getElementById('payment-chart-empty').style.display = 'flex';
+  }
+}
+
+// ── TABLE FLOOR MAP — GET /staff/table-assignments ────────────
+// Response: { data: [{ table_id, table_number, status, staff_id, staff_name }] }
+async function loadTables() {
+  try {
+    const res    = await API.staff.assignments();
+    const tables = res.data || [];
+
+    const occupied = tables.filter(t => t.status === 'occupied').length;
+    document.getElementById('occupied-count').textContent = occupied + '/' + tables.length;
+
+    if (!tables.length) {
+      document.getElementById('table-grid').innerHTML =
+        '<p class="text-sm text-muted" style="grid-column:1/-1">No tables configured. Go to Settings to add tables.</p>';
+      return;
+    }
+
+    document.getElementById('table-grid').innerHTML = tables.map(t => `
+      <div class="table-cell ${t.status || 'available'}"
+           onclick="window.location='billing.html?table=${encodeURIComponent(t.table_id)}'"
+           title="${t.status === 'occupied' ? 'Waiter: ' + (t.staff_name || 'Unassigned') : 'Click to open billing'}">
+        <div class="table-num">T-${t.table_number}</div>
+        <div class="table-dot">${t.status==='occupied'?'🔴':t.status==='reserved'?'🟡':'🟢'}</div>
+        <div class="table-staff">${t.staff_name ? t.staff_name.split(' ')[0] : (t.status || 'Free')}</div>
+      </div>`).join('');
+  } catch {
+    document.getElementById('table-grid').innerHTML =
+      '<p class="text-sm text-muted" style="grid-column:1/-1">Could not load tables</p>';
+    document.getElementById('occupied-count').textContent = '—';
+  }
+}
+
+// ── RECENT BILLS — GET /bills?limit=6 ────────────────────────
+// Response: { data: [{ bill_number, total, status, table_number, created_at,
+//                       customer_name, payment_method }] }
+async function loadRecentBills() {
+  try {
+    const res   = await API.bills.list({ limit: 6 });
+    const bills = res.data || [];
+
+    if (!bills.length) {
+      document.getElementById('activity-list').innerHTML = `
+        <div class="empty-state" style="padding:20px 0">
+          <div class="empty-state-icon" style="font-size:1.5rem">🧾</div>
+          <p>No bills yet. <a href="billing.html" style="color:var(--brand)">Create your first bill →</a></p>
+        </div>`;
+      return;
+    }
+
+    const STATUS_COLOR = { paid:'success', pending:'warning', cancelled:'neutral' };
+    document.getElementById('activity-list').innerHTML = bills.map(b => `
+      <div class="activity-row">
+        <div class="activity-icon" style="background:var(--brand-l);color:var(--brand)">
+          <i class="ti ti-receipt"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.875rem;font-weight:600">Bill #${b.bill_number}</div>
+          <div class="text-xs text-muted">
+            ${b.table_number ? 'Table ' + b.table_number + ' · ' : ''}${Format.timeAgo(b.created_at)}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.875rem;font-weight:700">${Format.currency(b.total)}</div>
+          <span class="badge badge-${STATUS_COLOR[b.status] || 'neutral'}">${b.status}</span>
+        </div>
+      </div>`).join('');
+  } catch {
+    document.getElementById('activity-list').innerHTML =
+      '<p class="text-sm text-muted">Could not load recent bills</p>';
+  }
+}
+
+// ── TOP MENU ITEMS — GET /analytics/menu-performance ─────────
+// Response: { data: [{ id, name, emoji, price, total_orders,
+//                       total_revenue, orders_rank, revenue_rank }] }
+async function loadTopItems() {
+  try {
+    const res   = await API.analytics.menuPerformance();
+    const items = (res.data || []).slice(0, 5);
+
+    if (!items.length) {
+      document.getElementById('top-items').innerHTML = `
+        <div class="empty-state" style="padding:16px 0">
+          <div class="empty-state-icon" style="font-size:1.5rem">🍽️</div>
+          <p>No menu data yet. <a href="menu.html" style="color:var(--brand)">Add menu items →</a></p>
+        </div>`;
+      return;
+    }
+
+    const maxOrders = Math.max(...items.map(i => +i.total_orders || 0), 1);
+    const MEDALS    = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+    document.getElementById('top-items').innerHTML = items.map((item, idx) => `
+      <div class="top-item-row">
+        <span style="font-size:1.1rem;width:24px;text-align:center;flex-shrink:0">${MEDALS[idx] || idx+1}</span>
+        <span style="font-size:1.2rem;flex-shrink:0">${item.emoji || '🍽️'}</span>
+        <div style="flex:1;min-width:0">
+          <div class="font-semibold" style="font-size:.875rem">${item.name}</div>
+          <div class="progress mt-1">
+            <div class="progress-bar progress-brand"
+              style="width:${Math.round((+item.total_orders/maxOrders)*100)}%"></div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;min-width:70px">
+          <div class="font-bold" style="color:var(--success);font-size:.875rem">${Format.currency(item.total_revenue, true)}</div>
+          <div class="text-xs text-muted">${Format.number(item.total_orders)} orders</div>
+        </div>
+      </div>`).join('');
+  } catch {
+    document.getElementById('top-items').innerHTML =
+      '<p class="text-sm text-muted">Could not load menu data</p>';
+  }
+}
+
+// ── FEEDBACK SUMMARY — GET /feedback/summary ─────────────────
+// Response: { data: { total_feedback, avg_rating, positive_count,
+//                      negative_count, google_reviews_count, discounts_unlocked } }
+async function loadFeedbackSummary() {
+  try {
+    const res = await API.feedback.summary();
+    const d   = res.data || {};
+    const pos  = +d.positive_count  || 0;
+    const neg  = +d.negative_count  || 0;
+    const total= +d.total_feedback  || 0;
+    const posPct = total > 0 ? Math.round((pos / total) * 100) : 0;
+    const negPct = 100 - posPct;
+
+    if (total === 0) {
+      document.getElementById('feedback-summary').innerHTML = `
+        <div class="empty-state" style="padding:16px 0">
+          <div class="empty-state-icon" style="font-size:1.5rem">⭐</div>
+          <p>No feedback yet. Bills with QR codes will collect ratings automatically.</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('feedback-summary').innerHTML = `
+      <div style="text-align:center;padding:8px 0 14px">
+        <div style="font-size:2.8rem;font-weight:800;line-height:1;color:var(--text-primary)">
+          ${d.avg_rating > 0 ? Format.rating(d.avg_rating) : '—'}
+          <span style="font-size:1.3rem;color:#F59E0B"> ★</span>
+        </div>
+        <div class="text-xs text-muted mt-1">${Format.number(total)} ratings · last 30 days</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
+          <span style="color:var(--success);font-weight:600">😊 Positive (4-5★)</span>
+          <span>${posPct}% · ${Format.number(pos)}</span>
+        </div>
+        <div class="progress"><div class="progress-bar progress-success" style="width:${posPct}%"></div></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
+          <span style="color:var(--danger);font-weight:600">😔 Negative (1-3★)</span>
+          <span>${negPct}% · ${Format.number(neg)}</span>
+        </div>
+        <div class="progress"><div class="progress-bar progress-danger" style="width:${negPct}%"></div></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;text-align:center">
+        <div>
+          <div class="font-bold" style="color:var(--success);font-size:1.1rem">${Format.number(d.google_reviews_count)}</div>
+          <div class="text-xs text-muted">Google reviews</div>
+        </div>
+        <div>
+          <div class="font-bold" style="color:var(--brand);font-size:1.1rem">${Format.number(d.discounts_unlocked)}</div>
+          <div class="text-xs text-muted">Discounts given</div>
+        </div>
+        <div>
+          <div class="font-bold" style="color:var(--danger);font-size:1.1rem">${Format.number(neg)}</div>
+          <div class="text-xs text-muted">Complaints</div>
+        </div>
+      </div>`;
+  } catch {
+    document.getElementById('feedback-summary').innerHTML =
+      '<p class="text-sm text-muted">Could not load feedback data</p>';
+  }
+}
+</script>
+</body>
+</html>

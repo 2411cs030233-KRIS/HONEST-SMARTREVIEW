@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+.profile-header{background:linear-gradient(135deg,var(--ink),var(--ink-2));border-radius:var(--radius-lg);padding:28px;display:flex;align-items:center;gap:20px;margin-bottom:20px;color:#fff}
+.profile-avatar-lg{width:72px;height:72px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:#fff;flex-shrink:0;border:3px solid rgba(255,255,255,.2)}
+.profile-name{font-size:1.3rem;font-weight:800;margin-bottom:3px}
+.profile-email{font-size:.875rem;color:rgba(255,255,255,.6);margin-bottom:8px}
+.plan-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.session-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.session-item:last-child{border-bottom:none}
+.session-icon{width:38px;height:38px;border-radius:var(--radius);background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.session-info{flex:1;min-width:0}
+.session-device{font-size:.875rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-meta{font-size:.775rem;color:var(--text-muted);margin-top:2px}
+.current-badge{font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--success-l);color:var(--success)}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>My Profile</h1>
+          <p>Manage your account details, password and sessions</p>
+        </div>
+      </div>
+
+      <!-- Profile header card — populated from GET /auth/me -->
+      <div class="profile-header" id="profile-header">
+        <div class="skeleton" style="width:72px;height:72px;border-radius:50%;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div class="skeleton skeleton-text" style="width:200px;height:22px;margin-bottom:8px"></div>
+          <div class="skeleton skeleton-text" style="width:160px;height:14px;margin-bottom:10px"></div>
+          <div class="skeleton skeleton-text" style="width:80px;height:22px;border-radius:20px"></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:20px">
+
+        <!-- LEFT COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Update profile -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="ti ti-user" style="color:var(--brand)"></i> Restaurant details</span>
+            </div>
+            <form id="profile-form" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="p-rest-name">Restaurant name</label>
+                <input type="text" id="p-rest-name" class="form-input" placeholder="Loading…">
+                <span class="form-error" id="p-rest-name-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="p-owner-name">Your name</label>
+                <input type="text" id="p-owner-name" class="form-input" placeholder="Loading…">
+                <span class="form-error" id="p-owner-name-error"></span>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label" for="p-phone">Phone / WhatsApp</label>
+                  <input type="tel" id="p-phone" class="form-input" placeholder="+91…">
+                  <span class="form-error" id="p-phone-error"></span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="p-city">City</label>
+                  <input type="text" id="p-city" class="form-input" placeholder="Hyderabad">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="p-whatsapp">WhatsApp no. (for reports)</label>
+                <input type="tel" id="p-whatsapp" class="form-input" placeholder="+91 98765 43210">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="p-gstin">GSTIN (optional)</label>
+                <input type="text" id="p-gstin" class="form-input" placeholder="22AAAAA0000A1Z5" maxlength="15">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="p-address">Address</label>
+                <textarea id="p-address" class="form-input" rows="2" placeholder="Full address…" style="resize:vertical"></textarea>
+              </div>
+
+              <!-- Success / error banner -->
+              <div id="profile-success" class="alert alert-success mb-4" style="display:none">
+                <i class="ti ti-check"></i> Profile updated successfully
+              </div>
+              <div id="profile-error" class="alert alert-danger mb-4" style="display:none">
+                <i class="ti ti-alert-circle"></i><span id="profile-error-msg"></span>
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="save-profile-btn">
+                <i class="ti ti-device-floppy"></i> Save changes
+              </button>
+            </form>
+          </div>
+
+          <!-- Google review settings -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="ti ti-brand-google" style="color:var(--brand)"></i> Google review settings</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-google-id">Google Place ID</label>
+              <input type="text" id="p-google-id" class="form-input" placeholder="ChIJ…">
+              <span class="form-hint">Find it at <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" style="color:var(--brand)">Place ID Finder</a></span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-review-url">Google review URL</label>
+              <input type="url" id="p-review-url" class="form-input" placeholder="https://g.page/r/…">
+              <span class="form-hint">Direct link that opens the Google review form for your restaurant</span>
+            </div>
+            <button class="btn btn-secondary" id="save-google-btn" onclick="saveGoogleSettings()">
+              <i class="ti ti-device-floppy"></i> Save Google settings
+            </button>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Change password -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="ti ti-lock" style="color:var(--brand)"></i> Change password</span>
+            </div>
+            <form id="pwd-form" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="current-pwd">Current password</label>
+                <div class="input-group">
+                  <i class="ti ti-lock input-icon"></i>
+                  <input type="password" id="current-pwd" class="form-input" placeholder="Your current password" autocomplete="current-password">
+                  <button type="button" class="input-toggle" onclick="togglePwd('current-pwd',this)"><i class="ti ti-eye"></i></button>
+                </div>
+                <span class="form-error" id="current-pwd-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="new-pwd">New password</label>
+                <div class="input-group">
+                  <i class="ti ti-lock-check input-icon"></i>
+                  <input type="password" id="new-pwd" class="form-input" placeholder="Min 8 characters" autocomplete="new-password">
+                  <button type="button" class="input-toggle" onclick="togglePwd('new-pwd',this)"><i class="ti ti-eye"></i></button>
+                </div>
+                <div class="pwd-strength">
+                  <div class="pwd-strength-bar"><div class="pwd-strength-fill" id="new-pwd-fill"></div></div>
+                  <span class="pwd-strength-label" id="new-pwd-label">Enter a new password</span>
+                </div>
+                <span class="form-error" id="new-pwd-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="confirm-pwd">Confirm new password</label>
+                <div class="input-group">
+                  <i class="ti ti-lock-check input-icon"></i>
+                  <input type="password" id="confirm-pwd" class="form-input" placeholder="Repeat new password">
+                </div>
+                <span class="form-error" id="confirm-pwd-error"></span>
+              </div>
+              <div id="pwd-success" class="alert alert-success mb-4" style="display:none">
+                <i class="ti ti-check"></i> Password changed successfully
+              </div>
+              <div id="pwd-error" class="alert alert-danger mb-4" style="display:none">
+                <i class="ti ti-alert-circle"></i><span id="pwd-error-msg"></span>
+              </div>
+              <button type="submit" class="btn btn-primary" id="save-pwd-btn">
+                <i class="ti ti-lock-check"></i> Change password
+              </button>
+            </form>
+          </div>
+
+          <!-- Account info -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="ti ti-info-circle" style="color:var(--brand)"></i> Account info</span>
+            </div>
+            <div id="account-info">
+              <div class="skeleton skeleton-text" style="height:14px;margin-bottom:10px"></div>
+              <div class="skeleton skeleton-text" style="height:14px;margin-bottom:10px"></div>
+              <div class="skeleton skeleton-text" style="height:14px"></div>
+            </div>
+          </div>
+
+          <!-- Active sessions -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="ti ti-devices" style="color:var(--brand)"></i> Active sessions</span>
+            </div>
+            <div id="sessions-list">
+              <div class="skeleton skeleton-block" style="height:60px"></div>
+            </div>
+            <div class="divider"></div>
+            <button class="btn btn-danger btn-sm" onclick="logout()" style="width:100%;justify-content:center">
+              <i class="ti ti-logout"></i> Sign out of all devices
+            </button>
+          </div>
+
+          <!-- Danger zone -->
+          <div class="card" style="border-color:var(--danger)">
+            <div class="card-header">
+              <span class="card-title" style="color:var(--danger)"><i class="ti ti-alert-triangle"></i> Danger zone</span>
+            </div>
+            <p class="text-sm text-muted mb-4">These actions cannot be undone. Please be careful.</p>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeactivate()">
+              <i class="ti ti-trash"></i> Deactivate account
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+// Profile data loaded from GET /auth/me
+let profileData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'profile.html', title:'Profile', subtitle:'Account settings' });
+  await loadProfile();
+  initPasswordStrength();
+});
+
+// ── LOAD PROFILE ─────────────────────────────────────────────
+// Controller: authController.getMe
+// Route: GET /auth/me
+// Table: restaurants (JOIN branches)
+// Response: { data: { id, name, email, phone, owner_name, plan, city, logo_url,
+//              google_place_id, google_review_url, total_branches, plan_expires_at } }
+async function loadProfile() {
+  try {
+    const res = await API.auth.me();
+    profileData = res.data;
+
+    // Render profile header
+    document.getElementById('profile-header').innerHTML = `
+      <div class="profile-avatar-lg">${Format.initials(profileData.owner_name || profileData.name)}</div>
+      <div style="flex:1">
+        <div class="profile-name">${profileData.owner_name || '—'}</div>
+        <div class="profile-email">${profileData.email}</div>
+        <span class="plan-pill">⭐ ${Format.planLabel(profileData.plan)} plan</span>
+        ${profileData.plan_expires_at
+          ? `<span style="font-size:.75rem;color:rgba(255,255,255,.4);margin-left:10px">Expires ${Format.date(profileData.plan_expires_at)}</span>`
+          : ''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:4px">Branches</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#fff">${profileData.total_branches || 1}</div>
+      </div>`;
+
+    // Fill form fields — only real data from API
+    document.getElementById('p-rest-name').value  = profileData.name        || '';
+    document.getElementById('p-owner-name').value = profileData.owner_name  || '';
+    document.getElementById('p-phone').value      = profileData.phone       || '';
+    document.getElementById('p-city').value       = profileData.city        || '';
+    document.getElementById('p-whatsapp').value   = profileData.whatsapp_no || '';
+    document.getElementById('p-gstin').value      = profileData.gstin       || '';
+    document.getElementById('p-address').value    = profileData.address     || '';
+    document.getElementById('p-google-id').value  = profileData.google_place_id  || '';
+    document.getElementById('p-review-url').value = profileData.google_review_url || '';
+
+    // Account info section
+    document.getElementById('account-info').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:.875rem">
+        <div style="display:flex;justify-content:space-between">
+          <span class="text-muted">Email</span>
+          <span class="font-semibold">${profileData.email}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="text-muted">Plan</span>
+          <span class="badge badge-brand">${Format.planLabel(profileData.plan)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="text-muted">Restaurant slug</span>
+          <code style="font-size:.78rem;color:var(--brand)">${profileData.slug || '—'}</code>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="text-muted">City</span>
+          <span>${profileData.city || '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="text-muted">Total branches</span>
+          <span>${profileData.total_branches || 1}</span>
+        </div>
+      </div>`;
+
+    // Load sessions
+    await loadSessions();
+
+    // Update cached user in localStorage
+    API.setUser({ ...API.getUser(), name: profileData.name, plan: profileData.plan });
+
+  } catch (err) {
+    Toast.error('Could not load profile: ' + err.message);
+  }
+}
+
+// ── LOAD SESSIONS ─────────────────────────────────────────────
+// Controller: authController.getSessions
+// Route: GET /auth/sessions
+async function loadSessions() {
+  try {
+    const res = await API.auth.sessions();
+    const sessions = res.data || [];
+    document.getElementById('sessions-list').innerHTML = sessions.length
+      ? sessions.map(s => `
+          <div class="session-item">
+            <div class="session-icon"><i class="ti ti-${s.device?.toLowerCase().includes('mobile')?'device-mobile':'device-laptop'}"></i></div>
+            <div class="session-info">
+              <div class="session-device">${s.device || 'Unknown device'} ${s.is_current?'<span class="current-badge">Current</span>':''}</div>
+              <div class="session-meta">${s.ip || 'Unknown IP'} · ${Format.timeAgo(s.created_at)}</div>
+            </div>
+          </div>`).join('')
+      : '<p class="text-sm text-muted">No active sessions found</p>';
+  } catch {
+    document.getElementById('sessions-list').innerHTML = '<p class="text-sm text-muted">Could not load sessions</p>';
+  }
+}
+
+// ── SAVE PROFILE ──────────────────────────────────────────────
+// Controller: authController.updateMe
+// Route: PATCH /auth/me
+// Table: restaurants
+// Response: { data: { id, name, email, plan, phone, city } }
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  Form.clearAllErrors(e.target);
+  document.getElementById('profile-success').style.display = 'none';
+  document.getElementById('profile-error').style.display   = 'none';
+
+  const name       = document.getElementById('p-rest-name').value.trim();
+  const owner_name = document.getElementById('p-owner-name').value.trim();
+  const phone      = document.getElementById('p-phone').value.trim();
+
+  let valid = true;
+  if (!name || name.length < 2)       { Form.showError('p-rest-name',  'Minimum 2 characters'); valid = false; }
+  if (!owner_name || owner_name.length < 2) { Form.showError('p-owner-name', 'Minimum 2 characters'); valid = false; }
+  if (!phone) { Form.showError('p-phone', 'Phone number is required'); valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('save-profile-btn');
+  Form.setLoading(btn, true);
+
+  try {
+    await API.auth.updateMe({
+      name,
+      owner_name,
+      phone,
+      city:        document.getElementById('p-city').value.trim()      || null,
+      whatsapp_no: document.getElementById('p-whatsapp').value.trim()  || null,
+      gstin:       document.getElementById('p-gstin').value.trim()     || null,
+      address:     document.getElementById('p-address').value.trim()   || null,
+    });
+    document.getElementById('profile-success').style.display = 'flex';
+    // Update profile header immediately
+    await loadProfile();
+  } catch (err) {
+    document.getElementById('profile-error-msg').textContent = err.message;
+    document.getElementById('profile-error').style.display   = 'flex';
+  } finally {
+    Form.setLoading(btn, false);
+  }
+});
+
+// ── SAVE GOOGLE SETTINGS ──────────────────────────────────────
+async function saveGoogleSettings() {
+  const btn = document.getElementById('save-google-btn');
+  Form.setLoading(btn, true);
+  try {
+    await API.auth.updateMe({
+      name:               profileData?.name,
+      owner_name:         profileData?.owner_name,
+      phone:              profileData?.phone,
+      google_place_id:    document.getElementById('p-google-id').value.trim()   || null,
+      google_review_url:  document.getElementById('p-review-url').value.trim()  || null,
+    });
+    Toast.success('Google review settings saved');
+  } catch (err) { Toast.error(err.message); }
+  finally { Form.setLoading(btn, false); }
+}
+
+// ── CHANGE PASSWORD ────────────────────────────────────────────
+// Controller: authController.changePassword
+// Route: POST /auth/change-password
+// Table: restaurants (updates password_hash)
+document.getElementById('pwd-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  Form.clearAllErrors(e.target);
+  document.getElementById('pwd-success').style.display = 'none';
+  document.getElementById('pwd-error').style.display   = 'none';
+
+  const current = document.getElementById('current-pwd').value;
+  const newpwd  = document.getElementById('new-pwd').value;
+  const confirm = document.getElementById('confirm-pwd').value;
+
+  let valid = true;
+  if (!current) { Form.showError('current-pwd', 'Current password is required'); valid = false; }
+  if (!newpwd || newpwd.length < 8) { Form.showError('new-pwd', 'New password must be at least 8 characters'); valid = false; }
+  else {
+    const s = checkPasswordStrength(newpwd);
+    if (s.score < 2) { Form.showError('new-pwd', 'Password too weak — add numbers or symbols'); valid = false; }
+  }
+  if (newpwd !== confirm) { Form.showError('confirm-pwd', 'Passwords do not match'); valid = false; }
+  if (current === newpwd) { Form.showError('new-pwd', 'New password must differ from current'); valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('save-pwd-btn');
+  Form.setLoading(btn, true);
+  try {
+    await API.auth.changePassword(current, newpwd);
+    document.getElementById('pwd-success').style.display = 'flex';
+    document.getElementById('pwd-form').reset();
+    document.getElementById('new-pwd-fill').style.width = '0%';
+    document.getElementById('new-pwd-label').textContent = 'Enter a new password';
+  } catch (err) {
+    if (err.status === 401) {
+      Form.showError('current-pwd', 'Current password is incorrect');
+    } else {
+      document.getElementById('pwd-error-msg').textContent = err.message;
+      document.getElementById('pwd-error').style.display   = 'flex';
+    }
+  } finally {
+    Form.setLoading(btn, false);
+  }
+});
+
+// ── HELPERS ───────────────────────────────────────────────────
+function togglePwd(inputId, btn) {
+  const inp  = document.getElementById(inputId);
+  const icon = btn.querySelector('i');
+  inp.type   = inp.type === 'password' ? 'text' : 'password';
+  icon.className = inp.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+}
+
+function initPasswordStrength() {
+  document.getElementById('new-pwd').addEventListener('input', function() {
+    const s = checkPasswordStrength(this.value);
+    document.getElementById('new-pwd-fill').style.cssText = `width:${s.score*25}%;background:${s.color}`;
+    const lbl = document.getElementById('new-pwd-label');
+    lbl.textContent = s.label || 'Enter a new password';
+    lbl.style.color  = s.color || 'var(--text-muted)';
+  });
+}
+
+function confirmDeactivate() {
+  if (confirm('Are you sure you want to deactivate your account? This will prevent all logins. Contact support to reactivate.')) {
+    Toast.warning('Account deactivation — please contact support@smartreview.in');
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.plan-gate{background:linear-gradient(135deg,var(--ink),var(--ink-2));border-radius:var(--radius-lg);padding:24px;text-align:center;color:#fff}
+.plan-gate h3{font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.plan-gate p{font-size:.875rem;color:rgba(255,255,255,.6);margin-bottom:14px}
+.heatmap-grid{display:grid;gap:2px;overflow-x:auto}
+.heatmap-cell{border-radius:3px;cursor:pointer;transition:transform .1s}
+.heatmap-cell:hover{transform:scale(1.3);z-index:1}
+.hour-label{font-size:.62rem;color:var(--text-muted);text-align:center}
+.day-label{font-size:.72rem;color:var(--text-muted);display:flex;align-items:center}
+.forecast-bar{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.forecast-bar:last-child{border-bottom:none}
+.forecast-day{font-size:.825rem;font-weight:600;min-width:36px}
+.forecast-barwrap{flex:1;height:18px;background:var(--gray-100);border-radius:4px;overflow:hidden;position:relative}
+.forecast-fill{height:100%;background:linear-gradient(90deg,var(--brand),#6B5CEE);border-radius:4px;transition:width .5s ease}
+.forecast-val{font-size:.825rem;font-weight:700;color:var(--brand);min-width:70px;text-align:right}
+.complaint-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.complaint-row:last-child{border-bottom:none}
+.complaint-label{font-size:.875rem;font-weight:500;min-width:120px}
+.complaint-pct{font-size:.8rem;font-weight:700;color:var(--danger);min-width:40px;text-align:right}
+.peak-bar{display:flex;align-items:center;gap:8px;padding:5px 0}
+.peak-hour{font-size:.75rem;color:var(--text-muted);min-width:48px}
+.peak-fill{height:14px;border-radius:3px;transition:width .4s ease}
+.metric-tab{padding:7px 16px;border-radius:var(--radius);font-size:.825rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);transition:var(--transition-fast)}
+.metric-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Analytics</h1>
+          <p>Revenue trends, complaint patterns, menu performance and AI-powered forecasts</p>
+        </div>
+        <div class="page-header-right">
+          <select class="form-select" id="days-range" style="width:120px" onchange="loadAll()">
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 1: Revenue chart + Complaint analysis -->
+      <div class="content-grid-2" style="margin-bottom:20px">
+
+        <!-- Revenue chart — GET /analytics/revenue-chart -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Daily revenue</span>
+            <div style="display:flex;gap:6px">
+              <button class="metric-tab active" onclick="switchRevMetric('revenue',this)">Revenue</button>
+              <button class="metric-tab" onclick="switchRevMetric('bills',this)">Bills</button>
+              <button class="metric-tab" onclick="switchRevMetric('avg_bill',this)">Avg bill</button>
+            </div>
+          </div>
+          <div style="height:220px;position:relative">
+            <canvas id="rev-chart"></canvas>
+            <div id="rev-empty" class="empty-state" style="display:none;padding:16px">
+              <p>No revenue data yet for this period</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Complaint analysis — GET /analytics/complaints -->
+        <!-- { data: [{ complaint_type, count, pct }], total_complaints } -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Complaint breakdown</span>
+            <span class="badge badge-danger" id="total-complaints-badge">0 total</span>
+          </div>
+          <div id="complaint-list">
+            <div class="skeleton skeleton-block" style="height:160px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Peak hours + Menu performance -->
+      <div class="content-grid-2" style="margin-bottom:20px">
+
+        <!-- Peak hours — GET /analytics/peak-hours (premium+) -->
+        <!-- { data: [{ hour, bill_count, revenue, avg_rating, complaint_rate_pct, label }],
+               insights: { peak_hours[], suggestion } } -->
+        <div class="card" id="peak-hours-card">
+          <div class="card-header">
+            <span class="card-title">Peak hours</span>
+            <span class="badge badge-brand">Premium</span>
+          </div>
+          <div id="peak-hours-content">
+            <div class="skeleton skeleton-block" style="height:200px"></div>
+          </div>
+        </div>
+
+        <!-- Menu performance — GET /analytics/menu-performance -->
+        <!-- { data: [{ name, emoji, total_orders, total_revenue, orders_rank }] } -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Menu performance</span>
+            <div style="display:flex;gap:6px">
+              <button class="metric-tab active" onclick="switchMenuMetric('orders',this)">Orders</button>
+              <button class="metric-tab" onclick="switchMenuMetric('revenue',this)">Revenue</button>
+            </div>
+          </div>
+          <div style="height:220px;position:relative">
+            <canvas id="menu-chart"></canvas>
+            <div id="menu-empty" class="empty-state" style="display:none;padding:16px">
+              <p>No menu sales data yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Heatmap + Forecast -->
+      <div class="content-grid-2" style="margin-bottom:20px">
+
+        <!-- Heatmap — GET /analytics/heatmap (premium+) -->
+        <!-- { data: [{ day_of_week, hour, bill_count, revenue, complaints }], days_labels } -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Activity heatmap</span>
+            <span class="badge badge-brand">Premium</span>
+          </div>
+          <div id="heatmap-content">
+            <div class="skeleton skeleton-block" style="height:200px"></div>
+          </div>
+        </div>
+
+        <!-- Forecast — GET /analytics/forecast (premium+) -->
+        <!-- { data: [{ date, day_name, forecast_revenue, lower_bound, upper_bound, confidence }],
+               summary: { predicted_week_revenue, trend, slope_per_day } } -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">7-day revenue forecast</span>
+            <span class="badge badge-brand">Premium</span>
+          </div>
+          <div id="forecast-content">
+            <div class="skeleton skeleton-block" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Overview KPIs -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Period overview</span>
+          <span class="text-sm text-muted" id="overview-period"></span>
+        </div>
+        <div class="stats-grid" id="overview-kpis" style="margin-bottom:0">
+          <div class="skeleton skeleton-block" style="height:80px"></div>
+          <div class="skeleton skeleton-block" style="height:80px"></div>
+          <div class="skeleton skeleton-block" style="height:80px"></div>
+          <div class="skeleton skeleton-block" style="height:80px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let revenueData  = [];
+let menuData     = [];
+let revMetric    = 'revenue';
+let menuMetric   = 'orders';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'analytics.html', title:'Analytics', subtitle:'Business intelligence' });
+  await loadAll();
+});
+
+async function loadAll() {
+  await Promise.allSettled([
+    loadOverview(),
+    loadRevenueChart(),
+    loadComplaints(),
+    loadPeakHours(),
+    loadMenuPerformance(),
+    loadHeatmap(),
+    loadForecast(),
+  ]);
+}
+
+// ── OVERVIEW KPIs — GET /analytics/overview ───────────────────
+async function loadOverview() {
+  const days = document.getElementById('days-range').value;
+  const from = new Date(); from.setDate(from.getDate() - +days);
+  const fromStr = from.toISOString().slice(0,10);
+  const toStr   = new Date().toISOString().slice(0,10);
+  document.getElementById('overview-period').textContent = `${fromStr} → ${toStr}`;
+  try {
+    const res = await API.analytics.overview({ from: fromStr, to: toStr });
+    const d   = res.data || {};
+    document.getElementById('overview-kpis').innerHTML = `
+      <div class="stat-card"><div class="stat-label">Total revenue</div><div class="stat-value" style="color:var(--success)">${Format.currency(d.total_revenue,true)}</div><div class="stat-change neutral">${Format.number(d.total_bills)} paid bills</div></div>
+      <div class="stat-card"><div class="stat-label">Avg bill value</div><div class="stat-value">${Format.currency(d.avg_bill_value)}</div><div class="stat-change neutral">Per transaction</div></div>
+      <div class="stat-card"><div class="stat-label">Avg rating</div><div class="stat-value" style="color:var(--warning)">${d.avg_rating>0?Format.rating(d.avg_rating)+' ★':'—'}</div><div class="stat-change neutral">${Format.number(d.positive_reviews)} positive</div></div>
+      <div class="stat-card"><div class="stat-label">Google reviews</div><div class="stat-value" style="color:var(--brand)">+${Format.number(d.google_reviews)}</div><div class="stat-change neutral">${Format.number(d.discounts_given)} discounts</div></div>`;
+  } catch {
+    document.getElementById('overview-kpis').innerHTML =
+      '<p class="text-sm text-muted" style="grid-column:1/-1">Could not load overview</p>';
+  }
+}
+
+// ── REVENUE CHART — GET /analytics/revenue-chart ─────────────
+async function loadRevenueChart() {
+  const days = document.getElementById('days-range').value;
+  try {
+    const res  = await API.analytics.revenueChart(days);
+    revenueData = res.data || [];
+    drawRevenueChart();
+  } catch {
+    document.getElementById('rev-chart').style.display = 'none';
+    document.getElementById('rev-empty').style.display = 'flex';
+  }
+}
+
+function drawRevenueChart() {
+  if (!revenueData.length) {
+    document.getElementById('rev-chart').style.display = 'none';
+    document.getElementById('rev-empty').style.display = 'flex';
+    return;
+  }
+  document.getElementById('rev-chart').style.display = 'block';
+  document.getElementById('rev-empty').style.display = 'none';
+  const labels  = revenueData.map(r => new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+  const values  = revenueData.map(r => +r[revMetric] || 0);
+  const colors  = { revenue:'#4A3CCC', bills:'#0E9E6A', avg_bill:'#C47F1A' };
+  Charts.bar('rev-chart', labels, values, revMetric, colors[revMetric] || '#4A3CCC');
+}
+
+function switchRevMetric(metric, el) {
+  revMetric = metric;
+  document.querySelectorAll('#rev-chart').closest?.('.card')?.querySelectorAll('.metric-tab')
+    ?.forEach(b => b.classList.remove('active'));
+  // simpler approach:
+  el.closest('.card-header').querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  drawRevenueChart();
+}
+
+// ── COMPLAINTS — GET /analytics/complaints ────────────────────
+async function loadComplaints() {
+  try {
+    const days = document.getElementById('days-range').value;
+    const res  = await API.analytics.complaints();
+    const rows = res.data || [];
+    const tot  = res.total_complaints || 0;
+    document.getElementById('total-complaints-badge').textContent = Format.number(tot) + ' total';
+
+    if (!rows.length) {
+      document.getElementById('complaint-list').innerHTML =
+        '<div class="empty-state" style="padding:16px"><div class="empty-state-icon" style="font-size:1.5rem">😊</div><p>No complaints in this period!</p></div>';
+      return;
+    }
+    document.getElementById('complaint-list').innerHTML = rows.map(r => `
+      <div class="complaint-row">
+        <span class="complaint-label">${r.complaint_type}</span>
+        <div style="flex:1"><div class="progress"><div class="progress-bar progress-danger" style="width:${r.pct}%"></div></div></div>
+        <span class="complaint-pct">${r.pct}%</span>
+        <span class="text-xs text-muted">${r.count}x</span>
+      </div>`).join('');
+  } catch {
+    document.getElementById('complaint-list').innerHTML = '<p class="text-sm text-muted">Could not load complaints</p>';
+  }
+}
+
+// ── PEAK HOURS — GET /analytics/peak-hours (premium+) ─────────
+async function loadPeakHours() {
+  try {
+    const res      = await API.analytics.peakHours();
+    const rows     = res.data     || [];
+    const insights = res.insights || {};
+    if (!rows.length) {
+      document.getElementById('peak-hours-content').innerHTML =
+        '<div class="empty-state" style="padding:16px"><p>Not enough data yet</p></div>';
+      return;
+    }
+    const maxBills = Math.max(...rows.map(r => +r.bill_count || 0), 1);
+    const COLORS   = { peak:'#4A3CCC', busy:'#0E9E6A', quiet:'#E5E7EB' };
+    const HOURS    = Array.from({length:24},(_,i)=>`${i.toString().padStart(2,'0')}:00`);
+
+    // Show 6am-midnight (most relevant for restaurants)
+    const daytime = rows.filter(r => r.hour >= 6 && r.hour <= 23);
+
+    document.getElementById('peak-hours-content').innerHTML = `
+      ${insights.suggestion ? `<div class="alert alert-info mb-4" style="font-size:.825rem"><i class="ti ti-bulb"></i> ${insights.suggestion}</div>` : ''}
+      <div style="max-height:200px;overflow-y:auto">
+        ${daytime.map(r => `
+          <div class="peak-bar">
+            <span class="peak-hour">${HOURS[r.hour]}</span>
+            <div style="flex:1"><div class="peak-fill" style="width:${Math.round((+r.bill_count/maxBills)*100)}%;background:${COLORS[r.label]||'#E5E7EB'}"></div></div>
+            <span style="font-size:.75rem;font-weight:600;min-width:50px;text-align:right;color:${r.label==='peak'?'var(--brand)':'var(--text-muted)'}">${r.bill_count} bills</span>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:12px;margin-top:10px">
+        <span style="font-size:.72rem;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#4A3CCC;display:inline-block"></span>Peak</span>
+        <span style="font-size:.72rem;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0E9E6A;display:inline-block"></span>Busy</span>
+        <span style="font-size:.72rem;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E5E7EB;display:inline-block"></span>Quiet</span>
+      </div>`;
+  } catch (err) {
+    // If 403 plan gate hit
+    if (err.status === 403) {
+      document.getElementById('peak-hours-content').innerHTML = planGate('Peak hours analysis requires Premium or Pro plan');
+    } else {
+      document.getElementById('peak-hours-content').innerHTML = '<p class="text-sm text-muted">Could not load peak hours</p>';
+    }
+  }
+}
+
+// ── MENU PERFORMANCE — GET /analytics/menu-performance ────────
+async function loadMenuPerformance() {
+  try {
+    const res  = await API.analytics.menuPerformance();
+    menuData   = (res.data || []).slice(0, 8);
+    drawMenuChart();
+  } catch {
+    document.getElementById('menu-chart').style.display = 'none';
+    document.getElementById('menu-empty').style.display = 'flex';
+  }
+}
+
+function drawMenuChart() {
+  if (!menuData.length) {
+    document.getElementById('menu-chart').style.display = 'none';
+    document.getElementById('menu-empty').style.display = 'flex';
+    return;
+  }
+  document.getElementById('menu-chart').style.display = 'block';
+  document.getElementById('menu-empty').style.display = 'none';
+  const labels = menuData.map(i => (i.emoji||'') + ' ' + i.name.substring(0,12));
+  const values = menuData.map(i => menuMetric==='orders' ? +i.total_orders : +i.total_revenue);
+  Charts.bar('menu-chart', labels, values, menuMetric==='orders'?'Orders':'Revenue ₹', '#0E9E6A');
+}
+
+function switchMenuMetric(metric, el) {
+  menuMetric = metric;
+  el.closest('.card-header').querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  drawMenuChart();
+}
+
+// ── HEATMAP — GET /analytics/heatmap (premium+) ───────────────
+async function loadHeatmap() {
+  try {
+    const res   = await API.analytics.heatmap();
+    const cells = res.data       || [];
+    const days  = res.days_labels|| ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    if (!cells.length) {
+      document.getElementById('heatmap-content').innerHTML =
+        '<div class="empty-state" style="padding:16px"><p>Not enough data for heatmap</p></div>';
+      return;
+    }
+    const maxVal = Math.max(...cells.map(c => +c.bill_count || 0), 1);
+    // Build 7×24 grid (columns = hours 0-23, rows = days)
+    const SHOW_HOURS = [6,8,10,12,14,16,18,20,22]; // subset for readability
+    let html = `<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:2px;font-size:.65rem">
+      <thead><tr><th></th>${Array.from({length:24},(_,h)=>`<th class="hour-label" style="${SHOW_HOURS.includes(h)?'':'color:transparent'}">${h}h</th>`).join('')}</tr></thead>
+      <tbody>`;
+    for (let d = 0; d < 7; d++) {
+      html += `<tr><td class="day-label" style="padding-right:6px;white-space:nowrap">${days[d]}</td>`;
+      for (let h = 0; h < 24; h++) {
+        const cell = cells.find(c => c.day_of_week === d && c.hour === h) || { bill_count:0 };
+        const intensity = Math.min(1, (+cell.bill_count / maxVal));
+        const alpha = 0.1 + intensity * 0.85;
+        html += `<td><div class="heatmap-cell" style="width:18px;height:18px;background:rgba(74,60,204,${alpha.toFixed(2)})"
+          title="${days[d]} ${h}:00 — ${cell.bill_count} bills"></div></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    document.getElementById('heatmap-content').innerHTML = html;
+  } catch (err) {
+    if (err.status === 403) {
+      document.getElementById('heatmap-content').innerHTML = planGate('Heatmap requires Premium or Pro plan');
+    } else {
+      document.getElementById('heatmap-content').innerHTML = '<p class="text-sm text-muted">Could not load heatmap</p>';
+    }
+  }
+}
+
+// ── FORECAST — GET /analytics/forecast (premium+) ─────────────
+async function loadForecast() {
+  try {
+    const res      = await API.analytics.forecast();
+    const rows     = res.data    || [];
+    const summary  = res.summary || {};
+
+    if (!rows.length) {
+      document.getElementById('forecast-content').innerHTML =
+        `<div class="empty-state" style="padding:16px"><p>${res.message || 'Not enough data for forecast. Need at least 7 days of billing history.'}</p></div>`;
+      return;
+    }
+
+    const maxForecast = Math.max(...rows.map(r => +r.forecast_revenue || 0), 1);
+    const TREND_ICON  = { growing:'↗️', declining:'↘️', stable:'➡️' };
+
+    document.getElementById('forecast-content').innerHTML = `
+      <div class="alert alert-info mb-4" style="font-size:.825rem">
+        <i class="ti ti-chart-line"></i>
+        <span>Predicted week revenue: <strong>${Format.currency(summary.predicted_week_revenue,true)}</strong>
+        · Trend: ${TREND_ICON[summary.trend]||''} ${summary.trend}
+        · Based on ${summary.based_on_days} days of data</span>
+      </div>
+      ${rows.map(r => `
+        <div class="forecast-bar">
+          <span class="forecast-day">${r.day_name}</span>
+          <div class="forecast-barwrap">
+            <div class="forecast-fill" style="width:${Math.round((+r.forecast_revenue/maxForecast)*100)}%"></div>
+          </div>
+          <span class="forecast-val">${Format.currency(r.forecast_revenue,true)}</span>
+          <span class="text-xs text-muted">${Math.round(r.confidence*100)}% conf.</span>
+        </div>`).join('')}`;
+  } catch (err) {
+    if (err.status === 403) {
+      document.getElementById('forecast-content').innerHTML = planGate('AI forecast requires Premium or Pro plan');
+    } else {
+      document.getElementById('forecast-content').innerHTML = '<p class="text-sm text-muted">Could not load forecast</p>';
+    }
+  }
+}
+
+function planGate(msg) {
+  return `<div class="plan-gate">
+    <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+    <h3>${msg}</h3>
+    <p>Upgrade your plan to unlock this feature</p>
+    <a href="settings.html" class="btn btn-primary btn-sm">Upgrade plan →</a>
+  </div>`;
+}
+</script>
+</body>
+</html>

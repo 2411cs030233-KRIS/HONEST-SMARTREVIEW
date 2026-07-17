@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+.settings-nav{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto}
+.snav-item{padding:9px 18px;font-size:.875rem;font-weight:500;color:var(--text-muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:var(--transition-fast)}
+.snav-item:hover{color:var(--text-primary)}
+.snav-item.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+.settings-panel{display:none}.settings-panel.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.plan-card{border:2px solid var(--border);border-radius:var(--radius-lg);padding:20px;cursor:pointer;transition:var(--transition);position:relative}
+.plan-card:hover{border-color:var(--brand)}
+.plan-card.current{border-color:var(--brand);background:var(--brand-l)}
+.plan-card.current::after{content:'Current';position:absolute;top:12px;right:12px;background:var(--brand);color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px}
+.plan-name{font-size:1.1rem;font-weight:800;margin-bottom:4px}
+.plan-price{font-size:1.5rem;font-weight:800;color:var(--brand);margin-bottom:8px}
+.plan-price span{font-size:.85rem;font-weight:400;color:var(--text-muted)}
+.plan-feature{display:flex;align-items:center;gap:7px;font-size:.825rem;margin-bottom:5px;color:var(--text-secondary)}
+.plan-feature i{color:var(--success);font-size:.9rem}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info{flex:1;min-width:0}
+.toggle-title{font-size:.9rem;font-weight:600;margin-bottom:2px}
+.toggle-desc{font-size:.78rem;color:var(--text-muted);line-height:1.5}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.ts-slider{position:absolute;inset:0;background:var(--gray-200);border-radius:12px;cursor:pointer;transition:var(--transition)}
+.ts-slider::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:var(--transition);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.ts-slider{background:var(--brand)}
+input:checked+.ts-slider::before{transform:translateX(18px)}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Settings</h1>
+          <p>Restaurant configuration, plans and integrations</p>
+        </div>
+      </div>
+
+      <!-- Settings navigation tabs -->
+      <div class="settings-nav">
+        <button class="snav-item active" onclick="showPanel('restaurant',this)"><i class="ti ti-building"></i> Restaurant</button>
+        <button class="snav-item" onclick="showPanel('google',this)"><i class="ti ti-brand-google"></i> Google Reviews</button>
+        <button class="snav-item" onclick="showPanel('discounts',this)"><i class="ti ti-discount"></i> Discounts</button>
+        <button class="snav-item" onclick="showPanel('whatsapp',this)"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+        <button class="snav-item" onclick="showPanel('plan',this)"><i class="ti ti-crown"></i> Plan & billing</button>
+      </div>
+
+      <!-- PANEL: Restaurant -->
+      <div class="settings-panel active" id="panel-restaurant">
+        <div class="card" style="max-width:680px">
+          <div class="card-header"><span class="card-title">Restaurant information</span></div>
+          <form id="restaurant-form">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Restaurant name *</label>
+                <input type="text" id="s-name" class="form-input" placeholder="Loading…">
+                <span class="form-error" id="s-name-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Owner name *</label>
+                <input type="text" id="s-owner" class="form-input" placeholder="Loading…">
+                <span class="form-error" id="s-owner-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone *</label>
+                <input type="tel" id="s-phone" class="form-input" placeholder="+91…">
+                <span class="form-error" id="s-phone-error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">City *</label>
+                <input type="text" id="s-city" class="form-input" placeholder="Hyderabad">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cuisine type</label>
+                <select id="s-cuisine" class="form-select">
+                  <option value="">Select cuisine</option>
+                  <option value="north_indian">North Indian</option>
+                  <option value="south_indian">South Indian</option>
+                  <option value="chinese">Chinese</option>
+                  <option value="continental">Continental</option>
+                  <option value="multi_cuisine">Multi-cuisine</option>
+                  <option value="fast_food">Fast food</option>
+                  <option value="biryani">Biryani / Rice</option>
+                  <option value="seafood">Seafood</option>
+                  <option value="cafe">Café / Bakery</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">WhatsApp (for reports)</label>
+                <input type="tel" id="s-whatsapp" class="form-input" placeholder="+91 98765 43210">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full address</label>
+              <textarea id="s-address" class="form-input" rows="2" style="resize:vertical" placeholder="Shop 4, MG Road, Hyderabad"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">GSTIN</label>
+              <input type="text" id="s-gstin" class="form-input" placeholder="22AAAAA0000A1Z5" maxlength="15">
+              <span class="form-hint">Required for GST invoices on bills</span>
+            </div>
+            <div id="rest-success" class="alert alert-success mb-4" style="display:none"><i class="ti ti-check"></i> Saved successfully</div>
+            <div id="rest-error"   class="alert alert-danger  mb-4" style="display:none"><i class="ti ti-alert-circle"></i><span id="rest-error-msg"></span></div>
+            <button type="submit" class="btn btn-primary" id="save-rest-btn"><i class="ti ti-device-floppy"></i> Save restaurant info</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- PANEL: Google Reviews -->
+      <div class="settings-panel" id="panel-google">
+        <div class="card" style="max-width:680px">
+          <div class="card-header"><span class="card-title">Google review integration</span></div>
+          <div class="alert alert-info mb-5">
+            <i class="ti ti-info-circle"></i>
+            <div><strong>How the Google Review Gate works:</strong> After a customer rates 4★ or 5★, they see a prompt to leave a Google review in exchange for a discount. SmartReview only shows this button when the rating is positive — protecting your public reputation.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Google Place ID</label>
+            <input type="text" id="s-place-id" class="form-input" placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4">
+            <span class="form-hint">Find yours at: <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" style="color:var(--brand)">Place ID Finder ↗</a></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Google review URL *</label>
+            <input type="url" id="s-review-url" class="form-input" placeholder="https://g.page/r/YOURPLACEID/review">
+            <span class="form-hint">This is the exact URL that opens the Google review form for your restaurant. Test it on your phone first.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Test your review URL</label>
+            <button class="btn btn-secondary btn-sm" onclick="testReviewUrl()"><i class="ti ti-external-link"></i> Open review URL in new tab</button>
+          </div>
+          <div id="google-success" class="alert alert-success mb-4" style="display:none"><i class="ti ti-check"></i> Google settings saved</div>
+          <div id="google-error"   class="alert alert-danger  mb-4" style="display:none"><i class="ti ti-alert-circle"></i><span id="google-error-msg"></span></div>
+          <button class="btn btn-primary" onclick="saveGoogleSettings()"><i class="ti ti-device-floppy"></i> Save Google settings</button>
+        </div>
+      </div>
+
+      <!-- PANEL: Discounts -->
+      <div class="settings-panel" id="panel-discounts">
+        <div class="card" style="max-width:680px">
+          <div class="card-header"><span class="card-title">Discount configuration</span></div>
+          <div class="alert alert-info mb-5">
+            <i class="ti ti-info-circle"></i>
+            These discounts are applied automatically when a customer leaves a Google review. The discount is deducted from their bill total before payment.
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">5★ rating discount</div>
+              <div class="toggle-desc">Applied when customer gives 5 stars AND posts a Google review</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="number" id="disc-5star" class="form-input" style="width:80px" min="0" max="20" value="5" placeholder="5">
+              <span class="text-sm font-semibold">%</span>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">4★ rating discount</div>
+              <div class="toggle-desc">Applied when customer gives 4 stars AND posts a Google review</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="number" id="disc-4star" class="form-input" style="width:80px" min="0" max="20" value="4" placeholder="4">
+              <span class="text-sm font-semibold">%</span>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Honest Review Mode</div>
+              <div class="toggle-desc">When ON: 1-3★ ratings ALSO go to Google (with smaller 1-2% discount). When OFF: 1-3★ stay private as complaints only.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="honest-mode">
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div id="honest-mode-section" style="display:none;padding:14px 0;border-bottom:1px solid var(--border)">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">3★ discount %</label>
+                <input type="number" id="disc-3star" class="form-input" min="0" max="5" value="2" placeholder="2">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">2★ discount %</label>
+                <input type="number" id="disc-2star" class="form-input" min="0" max="5" value="1" placeholder="1">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">1★ discount %</label>
+                <input type="number" id="disc-1star" class="form-input" min="0" max="5" value="1" placeholder="1">
+              </div>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">GST on discounted amount</div>
+              <div class="toggle-desc">Apply GST (5%) after the review discount is subtracted</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="gst-on-discount" checked>
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div style="margin-top:20px">
+            <div id="disc-success" class="alert alert-success mb-4" style="display:none"><i class="ti ti-check"></i> Discount settings saved</div>
+            <button class="btn btn-primary" onclick="saveDiscountSettings()"><i class="ti ti-device-floppy"></i> Save discount settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL: WhatsApp -->
+      <div class="settings-panel" id="panel-whatsapp">
+        <div class="card" style="max-width:680px">
+          <div class="card-header"><span class="card-title">WhatsApp / report settings</span></div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Daily revenue report</div>
+              <div class="toggle-desc">Send a daily summary of revenue, bills, and ratings to your WhatsApp every night at 11 PM</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="daily-report" checked onchange="saveReportSchedule('daily',this)">
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Weekly report (Monday 8 AM)</div>
+              <div class="toggle-desc">Send a weekly summary every Monday morning covering the past 7 days</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="weekly-report" onchange="saveReportSchedule('weekly',this)">
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Low stock alerts</div>
+              <div class="toggle-desc">Send WhatsApp alert when any inventory item drops below minimum stock level</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="low-stock-alert" checked>
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Complaint alerts (instant)</div>
+              <div class="toggle-desc">Send immediate WhatsApp alert when a customer gives 1-3★ rating</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="complaint-alert" checked>
+              <span class="ts-slider"></span>
+            </label>
+          </div>
+
+          <div style="margin-top:20px">
+            <div class="form-group">
+              <label class="form-label">Send test report now</label>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary" onclick="sendTestReport('daily')"><i class="ti ti-send"></i> Send daily report now</button>
+                <button class="btn btn-secondary" onclick="sendTestReport('weekly')"><i class="ti ti-send"></i> Send weekly report</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL: Plan & billing -->
+      <div class="settings-panel" id="panel-plan">
+        <div style="margin-bottom:20px" id="current-plan-info">
+          <div class="skeleton skeleton-block" style="height:80px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px">
+          <div class="plan-card" id="plan-basic">
+            <div class="plan-name">Basic</div>
+            <div class="plan-price">₹499<span>/month</span></div>
+            <div class="plan-feature"><i class="ti ti-check"></i>QR billing unlimited</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Google review gate</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>WhatsApp bills</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Basic analytics</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>1 branch</div>
+            <button class="btn btn-secondary btn-block mt-4" onclick="upgradePlan('basic')">Select Basic</button>
+          </div>
+          <div class="plan-card" id="plan-premium">
+            <div class="plan-name">Premium ⭐</div>
+            <div class="plan-price">₹1,499<span>/month</span></div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Everything in Basic</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Peak hours analysis</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Activity heatmap</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>AI revenue forecast</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Loyalty program</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Up to 3 branches</div>
+            <button class="btn btn-primary btn-block mt-4" onclick="upgradePlan('premium')">Select Premium</button>
+          </div>
+          <div class="plan-card" id="plan-pro">
+            <div class="plan-name">Pro 🚀</div>
+            <div class="plan-price">₹2,999<span>/month</span></div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Everything in Premium</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>All 6 AI features</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Branch comparison</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>White-label QR pages</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>API access</div>
+            <div class="plan-feature"><i class="ti ti-check"></i>Unlimited branches</div>
+            <button class="btn btn-secondary btn-block mt-4" onclick="upgradePlan('pro')">Select Pro</button>
+          </div>
+        </div>
+        <p class="text-sm text-muted mt-4">All plans include 14-day free trial. Cancel anytime. Contact support@smartreview.in for invoices.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let profileData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'settings.html', title:'Settings', subtitle:'Restaurant configuration' });
+  await loadSettings();
+
+  // Honest mode toggle shows/hides low-star discount fields
+  document.getElementById('honest-mode').addEventListener('change', function() {
+    document.getElementById('honest-mode-section').style.display = this.checked ? 'block' : 'none';
+  });
+});
+
+// ── LOAD — GET /auth/me ───────────────────────────────────────
+async function loadSettings() {
+  try {
+    const res = await API.auth.me();
+    profileData = res.data || {};
+
+    // Restaurant panel
+    document.getElementById('s-name').value    = profileData.name         || '';
+    document.getElementById('s-owner').value   = profileData.owner_name   || '';
+    document.getElementById('s-phone').value   = profileData.phone        || '';
+    document.getElementById('s-city').value    = profileData.city         || '';
+    document.getElementById('s-whatsapp').value= profileData.whatsapp_no  || '';
+    document.getElementById('s-gstin').value   = profileData.gstin        || '';
+    document.getElementById('s-address').value = profileData.address      || '';
+    if (profileData.cuisine_type) document.getElementById('s-cuisine').value = profileData.cuisine_type;
+
+    // Pre-fill Honest Review Mode toggle from real backend value
+    const honestToggle = document.getElementById('honest-mode');
+    if (honestToggle) {
+      honestToggle.checked = !!profileData.honest_review_mode;
+      // Show/hide low-star discount section
+      const section = document.getElementById('honest-mode-section');
+      if (section) section.style.display = profileData.honest_review_mode ? 'block' : 'none';
+    }
+
+    // Google panel
+    document.getElementById('s-place-id').value   = profileData.google_place_id  || '';
+    document.getElementById('s-review-url').value  = profileData.google_review_url || '';
+
+    // Plan panel
+    const plan = profileData.plan || 'basic';
+    document.getElementById('current-plan-info').innerHTML = `
+      <div class="card" style="background:var(--ink);color:#fff;margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div>
+            <div style="font-size:1rem;font-weight:800">Current plan: <span style="color:#FFD54F">${Format.planLabel(plan)}</span></div>
+            <div style="font-size:.825rem;color:rgba(255,255,255,.55);margin-top:3px">
+              ${profileData.plan_expires_at ? 'Renews ' + Format.date(profileData.plan_expires_at) : 'Active · 14-day trial'}
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:.825rem;color:rgba(255,255,255,.45)">Restaurant: ${profileData.name}</div>
+        </div>
+      </div>`;
+
+    // Mark current plan card
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('current'));
+    const planCard = document.getElementById('plan-' + plan);
+    if (planCard) planCard.classList.add('current');
+
+    // Load report schedules
+    await loadReportSchedules();
+  } catch (err) {
+    Toast.error('Could not load settings: ' + err.message);
+  }
+}
+
+// ── LOAD REPORT SCHEDULES — GET /reports/schedules ────────────
+async function loadReportSchedules() {
+  try {
+    const res = await API.reports.schedules();
+    (res.data || []).forEach(s => {
+      const el = document.getElementById(s.type + '-report');
+      if (el) el.checked = !!s.is_active;
+    });
+  } catch { /* non-fatal */ }
+}
+
+// ── SAVE RESTAURANT — PATCH /auth/me ─────────────────────────
+document.getElementById('restaurant-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  document.getElementById('rest-success').style.display = 'none';
+  document.getElementById('rest-error').style.display   = 'none';
+  Form.clearAllErrors(e.target);
+
+  const name  = document.getElementById('s-name').value.trim();
+  const owner = document.getElementById('s-owner').value.trim();
+  const phone = document.getElementById('s-phone').value.trim();
+  let valid = true;
+  if (!name  || name.length  < 2) { Form.showError('s-name',  'Minimum 2 characters'); valid = false; }
+  if (!owner || owner.length < 2) { Form.showError('s-owner', 'Minimum 2 characters'); valid = false; }
+  if (!phone)                     { Form.showError('s-phone', 'Phone is required');      valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('save-rest-btn');
+  Form.setLoading(btn, true);
+  try {
+    await API.auth.updateMe({
+      name, owner_name: owner, phone,
+      city:         document.getElementById('s-city').value.trim()    || null,
+      whatsapp_no:  document.getElementById('s-whatsapp').value.trim()|| null,
+      gstin:        document.getElementById('s-gstin').value.trim()   || null,
+      address:      document.getElementById('s-address').value.trim() || null,
+      cuisine_type: document.getElementById('s-cuisine').value        || null,
+    });
+    document.getElementById('rest-success').style.display = 'flex';
+    API.setUser({ ...API.getUser(), name });
+  } catch (err) {
+    document.getElementById('rest-error-msg').textContent = err.message;
+    document.getElementById('rest-error').style.display   = 'flex';
+  } finally { Form.setLoading(btn, false); }
+});
+
+// ── SAVE GOOGLE SETTINGS ──────────────────────────────────────
+async function saveGoogleSettings() {
+  document.getElementById('google-success').style.display = 'none';
+  document.getElementById('google-error').style.display   = 'none';
+  try {
+    await API.auth.updateMe({
+      name:              profileData?.name,
+      owner_name:        profileData?.owner_name,
+      phone:             profileData?.phone,
+      google_place_id:   document.getElementById('s-place-id').value.trim()  || null,
+      google_review_url: document.getElementById('s-review-url').value.trim()|| null,
+    });
+    document.getElementById('google-success').style.display = 'flex';
+  } catch (err) {
+    document.getElementById('google-error-msg').textContent = err.message;
+    document.getElementById('google-error').style.display = 'flex';
+  }
+}
+
+function testReviewUrl() {
+  const url = document.getElementById('s-review-url').value.trim();
+  if (!url) { Toast.warning('Enter your Google review URL first'); return; }
+  window.open(url, '_blank');
+}
+
+// ── SAVE DISCOUNT SETTINGS — stored locally (extend backend if needed) ──
+async function saveDiscountSettings() {
+  const honestMode = document.getElementById('honest-mode').checked;
+  const settings = {
+    disc_5star:      +document.getElementById('disc-5star').value      || 5,
+    disc_4star:      +document.getElementById('disc-4star').value      || 4,
+    honest_mode:     honestMode,
+    disc_3star:      +document.getElementById('disc-3star').value      || 2,
+    disc_2star:      +document.getElementById('disc-2star').value      || 1,
+    disc_1star:      +document.getElementById('disc-1star').value      || 1,
+    gst_on_discount: document.getElementById('gst-on-discount').checked,
+  };
+  // Save discount percentages to localStorage
+  localStorage.setItem('sr_discount_settings', JSON.stringify(settings));
+
+  // ── Save Honest Review Mode to backend — PATCH /auth/honest-review-mode ──
+  try {
+    await API.auth.toggleHonestMode(honestMode);
+    document.getElementById('disc-success').style.display = 'flex';
+    Toast.success(
+      honestMode
+        ? '✅ Discount settings saved. Honest Review Mode is ON.'
+        : '✅ Discount settings saved. Honest Review Mode is OFF.'
+    );
+  } catch (err) {
+    Toast.error('Discount settings saved locally, but could not update Honest Mode: ' + err.message);
+  }
+  setTimeout(() => { document.getElementById('disc-success').style.display = 'none'; }, 4000);
+}
+
+// ── SAVE REPORT SCHEDULE — POST /reports/schedules ───────────
+async function saveReportSchedule(type, checkbox) {
+  try {
+    await API.reports.upsert({ type, is_active: checkbox.checked, delivery: 'whatsapp' });
+    Toast.success((type === 'daily' ? 'Daily' : 'Weekly') + ' report ' + (checkbox.checked ? 'enabled' : 'disabled'));
+  } catch (err) {
+    checkbox.checked = !checkbox.checked;
+    Toast.error(err.message);
+  }
+}
+
+// ── SEND TEST REPORT — POST /reports/send-now ─────────────────
+async function sendTestReport(type) {
+  try {
+    await API.reports.sendNow({ type });
+    Toast.success(type + ' report sent to WhatsApp!');
+  } catch (err) { Toast.error(err.message); }
+}
+
+// ── UPGRADE PLAN ──────────────────────────────────────────────
+function upgradePlan(plan) {
+  const prices = { basic: 499, premium: 1499, pro: 2999 };
+  if (plan === (profileData?.plan || 'basic')) { Toast.info('You are already on this plan'); return; }
+  Toast.info(`Upgrade to ${Format.planLabel(plan)} (₹${prices[plan]}/mo) — Payment integration via Razorpay coming soon`);
+}
+
+// ── TAB NAVIGATION ────────────────────────────────────────────
+function showPanel(id, el) {
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.snav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create Account — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/auth.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+</head>
+<body>
+<div class="auth-shell">
+
+  <div class="auth-brand">
+    <div class="auth-brand-logo">
+      <div class="auth-brand-mark"><i class="ti ti-star"></i></div>
+      <span class="auth-brand-name">SmartReview</span>
+    </div>
+    <div class="auth-brand-body">
+      <h2 class="auth-brand-tagline">Start getting more <em>Google reviews</em> today</h2>
+      <p class="auth-brand-desc">Setup takes under 2 minutes. No credit card. Cancel anytime.</p>
+      <div class="auth-features" style="margin-top:28px">
+        <div class="auth-feature"><div class="auth-feature-icon">✅</div>14-day free trial — all features included</div>
+        <div class="auth-feature"><div class="auth-feature-icon">🚀</div>Your QR code ready in under 2 minutes</div>
+        <div class="auth-feature"><div class="auth-feature-icon">💰</div>Plans from ₹499/month after trial</div>
+      </div>
+    </div>
+    <div class="auth-brand-stats">
+      <div><span class="auth-stat-val">2 min</span><span class="auth-stat-label">Setup time</span></div>
+      <div><span class="auth-stat-val">Free</span><span class="auth-stat-label">14-day trial</span></div>
+      <div><span class="auth-stat-val">₹499</span><span class="auth-stat-label">Starting price</span></div>
+    </div>
+  </div>
+
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+
+      <div class="auth-form-header">
+        <h1>Create your account</h1>
+        <p>Register your restaurant on SmartReview</p>
+      </div>
+
+      <!-- Step indicator -->
+      <div class="register-steps">
+        <div class="reg-step active" id="dot-1"><div class="reg-step-dot" id="dot-num-1">1</div><span class="reg-step-label">Restaurant</span></div>
+        <div class="reg-step"        id="dot-2"><div class="reg-step-dot" id="dot-num-2">2</div><span class="reg-step-label">Account</span></div>
+        <div class="reg-step"        id="dot-3"><div class="reg-step-dot" id="dot-num-3">3</div><span class="reg-step-label">Done</span></div>
+      </div>
+
+      <!-- API error banner -->
+      <div id="reg-error" class="alert alert-danger mb-4" style="display:none">
+        <i class="ti ti-alert-circle"></i>
+        <span id="reg-error-msg"></span>
+      </div>
+
+      <!-- Step 1: Restaurant info -->
+      <div class="step-panel active" id="step-1">
+        <div class="form-group">
+          <label class="form-label" for="restaurant-name">Restaurant name *</label>
+          <div class="input-group">
+            <i class="ti ti-building input-icon"></i>
+            <input type="text" id="restaurant-name" class="form-input" placeholder="e.g. Spice Garden" autocomplete="organization">
+          </div>
+          <span class="form-error" id="restaurant-name-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="owner-name">Your name *</label>
+          <div class="input-group">
+            <i class="ti ti-user input-icon"></i>
+            <input type="text" id="owner-name" class="form-input" placeholder="e.g. Rajesh Kumar" autocomplete="name">
+          </div>
+          <span class="form-error" id="owner-name-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">WhatsApp number *</label>
+          <div class="input-group">
+            <i class="ti ti-phone input-icon"></i>
+            <input type="tel" id="phone" class="form-input" placeholder="+91 98765 43210" autocomplete="tel">
+          </div>
+          <span class="form-hint">Reports and alerts are sent here</span>
+          <span class="form-error" id="phone-error"></span>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="city">City *</label>
+            <input type="text" id="city" class="form-input" placeholder="Hyderabad" autocomplete="address-level2">
+            <span class="form-error" id="city-error"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="table-count">Number of tables</label>
+            <input type="number" id="table-count" class="form-input" placeholder="10" min="1" max="200" value="10">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg btn-block" id="step1-next">
+          Continue <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Step 2: Credentials -->
+      <div class="step-panel" id="step-2">
+        <div class="form-group">
+          <label class="form-label" for="email">Email address *</label>
+          <div class="input-group">
+            <i class="ti ti-mail input-icon"></i>
+            <input type="email" id="email" class="form-input" placeholder="owner@restaurant.com" autocomplete="email">
+          </div>
+          <span class="form-error" id="email-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password *</label>
+          <div class="input-group">
+            <i class="ti ti-lock input-icon"></i>
+            <input type="password" id="password" class="form-input" placeholder="Min 8 characters" autocomplete="new-password" id="reg-password">
+            <button type="button" class="input-toggle" id="pwd-toggle"><i class="ti ti-eye"></i></button>
+          </div>
+          <div class="pwd-strength">
+            <div class="pwd-strength-bar"><div class="pwd-strength-fill" id="pwd-fill"></div></div>
+            <span class="pwd-strength-label" id="pwd-label">Enter a password</span>
+          </div>
+          <span class="form-error" id="password-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirm-password">Confirm password *</label>
+          <div class="input-group">
+            <i class="ti ti-lock-check input-icon"></i>
+            <input type="password" id="confirm-password" class="form-input" placeholder="Repeat password">
+          </div>
+          <span class="form-error" id="confirm-password-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-check">
+            <input type="checkbox" id="terms">
+            <label for="terms">I agree to the <a href="#" style="color:var(--brand)">Terms of Service</a></label>
+          </label>
+          <span class="form-error" id="terms-error"></span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="btn btn-secondary" id="step2-back"><i class="ti ti-arrow-left"></i> Back</button>
+          <button type="button" class="btn btn-primary btn-lg" id="reg-submit" style="flex:1">
+            <i class="ti ti-user-plus"></i> Create account
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div class="step-panel" id="step-3">
+        <div class="empty-state" style="padding:24px 0">
+          <div class="empty-state-icon">🎉</div>
+          <h3>Account created!</h3>
+          <p>Welcome to SmartReview. Your 14-day free trial has started. You are now signed in.</p>
+          <a href="dashboard.html" class="btn btn-primary btn-lg mt-5">
+            <i class="ti ti-layout-dashboard"></i> Go to dashboard
+          </a>
+        </div>
+      </div>
+
+      <div class="auth-form-footer mt-4" id="signin-link">
+        Already have an account? <a href="login.html">Sign in →</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (!API.requireGuest()) return;
+
+  let step = 1;
+  // Collected from step 1
+  const formData = {};
+
+  function showStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`step-${n}`).classList.add('active');
+    // Update dots
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      const num = document.getElementById(`dot-num-${i}`);
+      dot.classList.remove('active','done');
+      if (i < n)  { dot.classList.add('done'); num.innerHTML = '<i class="ti ti-check" style="font-size:.75rem"></i>'; }
+      if (i === n) { dot.classList.add('active'); num.textContent = i; }
+      if (i > n)   { num.textContent = i; }
+    }
+    if (n === 3) document.getElementById('signin-link').style.display = 'none';
+    step = n;
+  }
+
+  // Password toggle
+  document.getElementById('pwd-toggle').addEventListener('click', function() {
+    const pwd = document.getElementById('password');
+    pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    this.querySelector('i').className = pwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+  });
+
+  // Password strength meter
+  document.getElementById('password').addEventListener('input', function() {
+    const s = checkPasswordStrength(this.value);
+    document.getElementById('pwd-fill').style.cssText = `width:${s.score * 25}%;background:${s.color}`;
+    const lbl = document.getElementById('pwd-label');
+    lbl.textContent = s.label || 'Enter a password';
+    lbl.style.color  = s.color || 'var(--text-muted)';
+  });
+
+  // Step 1 → Step 2
+  document.getElementById('step1-next').addEventListener('click', () => {
+    document.getElementById('reg-error').style.display = 'none';
+    let valid = true;
+    const name  = document.getElementById('restaurant-name').value.trim();
+    const owner = document.getElementById('owner-name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const city  = document.getElementById('city').value.trim();
+    const tc    = parseInt(document.getElementById('table-count').value) || 10;
+
+    // Validation mirrors Joi schema in routes/index.js
+    if (!name  || name.length < 2)   { Form.showError('restaurant-name', 'Minimum 2 characters'); valid = false; }
+    if (!owner || owner.length < 2)   { Form.showError('owner-name',     'Minimum 2 characters'); valid = false; }
+    if (!phone) { Form.showError('phone', 'Phone number is required'); valid = false; }
+    else if (!/^\+?[\d\s\-]{10,15}$/.test(phone)) { Form.showError('phone', 'Enter a valid phone number'); valid = false; }
+    if (!city)  { Form.showError('city', 'City is required'); valid = false; }
+
+    if (!valid) return;
+    Object.assign(formData, { name, owner_name: owner, phone, city, table_count: tc });
+    showStep(2);
+  });
+
+  // Step 2 → Step 1
+  document.getElementById('step2-back').addEventListener('click', () => showStep(1));
+
+  // Step 2: Submit
+  document.getElementById('reg-submit').addEventListener('click', async () => {
+    document.getElementById('reg-error').style.display = 'none';
+    let valid = true;
+    const email   = document.getElementById('email').value.trim();
+    const pwd     = document.getElementById('password').value;
+    const cpwd    = document.getElementById('confirm-password').value;
+    const terms   = document.getElementById('terms').checked;
+
+    // Match backend Joi schema: email required, password min 8
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { Form.showError('email', 'Valid email is required'); valid = false; }
+    if (!pwd || pwd.length < 8) { Form.showError('password', 'Password must be at least 8 characters'); valid = false; }
+    else {
+      const s = checkPasswordStrength(pwd);
+      if (s.score < 2) { Form.showError('password', 'Too weak — add numbers or symbols'); valid = false; }
+    }
+    if (pwd !== cpwd) { Form.showError('confirm-password', 'Passwords do not match'); valid = false; }
+    if (!terms) { Form.showError('terms', 'You must agree to continue'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('reg-submit');
+    Form.setLoading(btn, true);
+
+    try {
+      // RULE 5: API.auth.registerAndStore → POST /auth/register → authController.register
+      // Payload matches Joi registerSchema exactly
+      // Returns: { token, restaurant: { id, name, email, plan, slug } }
+      await API.auth.registerAndStore({ ...formData, email, password: pwd });
+      showStep(3);
+    } catch (err) {
+      Form.setLoading(btn, false);
+      if (err.status === 409) {
+        Form.showError('email', 'This email is already registered');
+      } else if (err.details?.length) {
+        // Joi validation errors from backend
+        Form.handleApiError(err, document.getElementById('step-2'));
+      } else {
+        document.getElementById('reg-error-msg').textContent = err.message;
+        document.getElementById('reg-error').style.display = 'flex';
+      }
+    }
+  });
+
+});
+</script>
+</body>
+</html>

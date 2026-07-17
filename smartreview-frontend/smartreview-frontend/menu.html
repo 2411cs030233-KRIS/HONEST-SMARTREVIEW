@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Menu — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+.menu-table-row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); transition:var(--transition-fast); }
+.menu-table-row:hover { background:var(--surface-2); }
+.item-emoji { font-size:1.6rem; width:40px; text-align:center; flex-shrink:0; }
+.item-info  { flex:1; min-width:0; }
+.item-name  { font-size:.9rem; font-weight:700; }
+.item-meta  { font-size:.77rem; color:var(--text-muted); margin-top:2px; }
+.item-price { font-size:1rem; font-weight:800; color:var(--brand); min-width:70px; text-align:right; }
+.veg-badge  { display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; padding:2px 7px; border-radius:10px; }
+.veg-badge.veg    { background:#dcfce7; color:#16a34a; }
+.veg-badge.nonveg { background:#fee2e2; color:#dc2626; }
+.toggle-switch { position:relative; width:40px; height:22px; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:var(--gray-200); border-radius:11px; cursor:pointer; transition:var(--transition); }
+.toggle-slider::before { content:''; position:absolute; height:16px; width:16px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:var(--transition); }
+input:checked + .toggle-slider { background:var(--success); }
+input:checked + .toggle-slider::before { transform:translateX(18px); }
+.cat-section { margin-bottom:24px; }
+.cat-header  { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--surface-2); border-radius:var(--radius) var(--radius) 0 0; border:1px solid var(--border); border-bottom:none; }
+.cat-body    { border:1px solid var(--border); border-radius:0 0 var(--radius) var(--radius); overflow:hidden; background:var(--white); }
+.cat-name    { font-size:.95rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+.item-count  { font-size:.75rem; color:var(--text-muted); background:var(--surface-3); padding:2px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Menu Management</h1>
+          <p>Add, edit, and manage your restaurant menu items and categories</p>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-secondary" onclick="Modal.open('cat-modal')"><i class="ti ti-folder-plus"></i> Add category</button>
+          <button class="btn btn-primary" onclick="openAddItem()"><i class="ti ti-plus"></i> Add item</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-label">Total items</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Available</div><div class="stat-value" style="color:var(--success)" id="stat-avail">—</div></div>
+        <div class="stat-card"><div class="stat-label">Sold out</div><div class="stat-value" style="color:var(--danger)" id="stat-sold">—</div></div>
+        <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-value" style="color:var(--brand)" id="stat-cats">—</div></div>
+      </div>
+
+      <!-- Search + filter bar -->
+      <div class="filter-bar">
+        <div class="search-bar" style="max-width:280px">
+          <i class="ti ti-search"></i>
+          <input type="text" id="menu-search" placeholder="Search items…" oninput="filterMenu()">
+        </div>
+        <select class="form-select" id="filter-cat" style="width:160px" onchange="filterMenu()">
+          <option value="">All categories</option>
+        </select>
+        <select class="form-select" id="filter-type" style="width:130px" onchange="filterMenu()">
+          <option value="">Veg & Non-veg</option>
+          <option value="veg">Veg only</option>
+          <option value="nonveg">Non-veg only</option>
+        </select>
+        <select class="form-select" id="filter-status" style="width:130px" onchange="filterMenu()">
+          <option value="">All status</option>
+          <option value="available">Available</option>
+          <option value="sold_out">Sold out</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Clear</button>
+      </div>
+
+      <!-- Menu list -->
+      <div id="menu-container"><div class="skeleton skeleton-block" style="height:200px"></div></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Item Modal -->
+<div class="modal-overlay" id="item-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="item-modal-title">Add menu item</span>
+      <button class="modal-close" onclick="Modal.close('item-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Item name *</label>
+          <input type="text" id="item-name" class="form-input" placeholder="e.g. Chicken Biryani">
+          <span class="form-error" id="item-name-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price (₹) *</label>
+          <input type="number" id="item-price" class="form-input" placeholder="250" min="0">
+          <span class="form-error" id="item-price-error"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="item-cat" class="form-select"><option value="">Select category</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emoji</label>
+          <input type="text" id="item-emoji" class="form-input" placeholder="🍗" maxlength="2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prep time (minutes)</label>
+          <input type="number" id="item-prep" class="form-input" placeholder="15" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calories</label>
+          <input type="number" id="item-calories" class="form-input" placeholder="450" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="item-desc" class="form-input" rows="2" placeholder="Short description of the item…" style="resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:24px">
+        <label class="form-check">
+          <input type="checkbox" id="item-veg" checked>
+          <label for="item-veg">🟢 Vegetarian</label>
+        </label>
+        <label class="form-check">
+          <input type="checkbox" id="item-featured">
+          <label for="item-featured">⭐ Featured item</label>
+        </label>
+        <label class="form-check">
+          <input type="checkbox" id="item-available" checked>
+          <label for="item-available">✅ Available</label>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('item-modal')">Cancel</button>
+      <button class="btn btn-primary" id="save-item-btn" onclick="saveItem()"><i class="ti ti-check"></i> Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal-overlay" id="cat-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span class="modal-title" id="cat-modal-title">Add category</span>
+      <button class="modal-close" onclick="Modal.close('cat-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Category name *</label>
+        <input type="text" id="cat-name" class="form-input" placeholder="e.g. Biryani">
+        <span class="form-error" id="cat-name-error"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input type="text" id="cat-emoji" class="form-input" placeholder="🍗" maxlength="2">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('cat-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCategory()"><i class="ti ti-check"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header"><span class="modal-title">Delete item?</span><button class="modal-close" onclick="Modal.close('delete-modal')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete <strong id="delete-item-name"></strong>? This cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('delete-modal')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()"><i class="ti ti-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+let allItems = [], allCats = [], editingItemId = null, deletingItemId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'menu.html', title:'Menu', subtitle:'Manage your restaurant menu' });
+  await loadMenu();
+});
+
+async function loadMenu() {
+  try {
+    const [menuRes, catRes] = await Promise.all([API.menu.list(), API.menu.categories.list()]);
+    allItems = menuRes.data || [];
+    allCats  = catRes.data  || [];
+
+    // Update stats
+    document.getElementById('stat-total').textContent = allItems.length;
+    document.getElementById('stat-avail').textContent = allItems.filter(i=>i.is_available).length;
+    document.getElementById('stat-sold').textContent  = allItems.filter(i=>!i.is_available).length;
+    document.getElementById('stat-cats').textContent  = allCats.length;
+
+    // Populate category filters
+    const filterSel = document.getElementById('filter-cat');
+    const itemCatSel = document.getElementById('item-cat');
+    [filterSel, itemCatSel].forEach(sel => {
+      const first = sel.options[0];
+      sel.innerHTML = '';
+      sel.appendChild(first);
+      allCats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = (cat.emoji||'') + ' ' + cat.name;
+        sel.appendChild(opt.cloneNode(true));
+      });
+    });
+
+    renderMenu(allItems);
+  } catch (err) { Toast.error('Could not load menu: ' + err.message); }
+}
+
+function filterMenu() {
+  const q      = document.getElementById('menu-search').value.toLowerCase();
+  const catId  = document.getElementById('filter-cat').value;
+  const type   = document.getElementById('filter-type').value;
+  const status = document.getElementById('filter-status').value;
+  let items = allItems;
+  if (q)      items = items.filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q));
+  if (catId)  items = items.filter(i => i.category_id == catId);
+  if (type === 'veg')    items = items.filter(i => i.is_veg);
+  if (type === 'nonveg') items = items.filter(i => !i.is_veg);
+  if (status === 'available') items = items.filter(i => i.is_available);
+  if (status === 'sold_out')  items = items.filter(i => !i.is_available);
+  renderMenu(items);
+}
+
+function clearFilters() {
+  document.getElementById('menu-search').value = '';
+  document.getElementById('filter-cat').value  = '';
+  document.getElementById('filter-type').value = '';
+  document.getElementById('filter-status').value = '';
+  renderMenu(allItems);
+}
+
+function renderMenu(items) {
+  if (!items.length) {
+    document.getElementById('menu-container').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍽️</div><h3>No items found</h3><p>Try adjusting your filters or add a new item</p><button class="btn btn-primary" onclick="openAddItem()"><i class="ti ti-plus"></i> Add item</button></div>';
+    return;
+  }
+
+  // Group by category
+  const grouped = {};
+  const uncatKey = '__uncat__';
+  allCats.forEach(c => { grouped[c.id] = { cat: c, items: [] }; });
+  grouped[uncatKey] = { cat: { name:'Uncategorised', emoji:'' }, items: [] };
+
+  items.forEach(item => {
+    const key = item.category_id || uncatKey;
+    if (!grouped[key]) grouped[key] = { cat: { name:'Unknown', emoji:'' }, items: [] };
+    grouped[key].items.push(item);
+  });
+
+  const html = Object.values(grouped).filter(g => g.items.length).map(g => `
+    <div class="cat-section">
+      <div class="cat-header">
+        <span class="cat-name">${g.cat.emoji||''} ${g.cat.name} <span class="item-count">${g.items.length} items</span></span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="editCategory('${g.cat.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteCategory('${g.cat.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="cat-body">
+        ${g.items.map(item => `
+          <div class="menu-table-row">
+            <span class="item-emoji">${item.emoji||'🍽️'}</span>
+            <div class="item-info">
+              <div class="item-name">${item.name} ${item.is_featured?'<span style="color:#F59E0B">⭐</span>':''}</div>
+              <div class="item-meta">
+                <span class="veg-badge ${item.is_veg?'veg':'nonveg'}">${item.is_veg?'VEG':'NON-VEG'}</span>
+                ${item.prep_time_min?` · ${item.prep_time_min} min`:''}
+                ${item.calories?` · ${item.calories} cal`:''}
+                ${item.description?` · ${item.description.substring(0,40)}…`:''}
+              </div>
+            </div>
+            <span class="item-price">${Format.currency(item.price)}</span>
+            <label class="toggle-switch" title="${item.is_available?'Available - click to mark sold out':'Sold out - click to make available'}">
+              <input type="checkbox" ${item.is_available?'checked':''} onchange="toggleItem('${item.id}',this)">
+              <span class="toggle-slider"></span>
+            </label>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditItem('${item.id}')" title="Edit"><i class="ti ti-pencil"></i></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger)" onclick="openDelete('${item.id}','${item.name.replace(/'/,'\\'')}')" title="Delete"><i class="ti ti-trash"></i></button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  document.getElementById('menu-container').innerHTML = html;
+}
+
+function openAddItem() {
+  editingItemId = null;
+  document.getElementById('item-modal-title').textContent = 'Add menu item';
+  ['item-name','item-price','item-emoji','item-desc','item-prep','item-calories'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('item-veg').checked = true;
+  document.getElementById('item-featured').checked = false;
+  document.getElementById('item-available').checked = true;
+  document.getElementById('item-cat').value = '';
+  Modal.open('item-modal');
+  document.getElementById('item-name').focus();
+}
+
+function openEditItem(id) {
+  const item = allItems.find(i => i.id == id);
+  if (!item) return;
+  editingItemId = id;
+  document.getElementById('item-modal-title').textContent = 'Edit: ' + item.name;
+  document.getElementById('item-name').value     = item.name;
+  document.getElementById('item-price').value    = item.price;
+  document.getElementById('item-emoji').value    = item.emoji || '';
+  document.getElementById('item-desc').value     = item.description || '';
+  document.getElementById('item-prep').value     = item.prep_time_min || '';
+  document.getElementById('item-calories').value = item.calories || '';
+  document.getElementById('item-cat').value      = item.category_id || '';
+  document.getElementById('item-veg').checked    = !!item.is_veg;
+  document.getElementById('item-featured').checked = !!item.is_featured;
+  document.getElementById('item-available').checked = !!item.is_available;
+  Modal.open('item-modal');
+}
+
+async function saveItem() {
+  const name  = document.getElementById('item-name').value.trim();
+  const price = document.getElementById('item-price').value;
+  Form.clearAllErrors(document.getElementById('item-modal'));
+  let valid = true;
+  if (!name)     { Form.showError('item-name',  'Item name is required'); valid = false; }
+  if (!price || +price < 0) { Form.showError('item-price', 'Valid price is required'); valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('save-item-btn');
+  Form.setLoading(btn, true);
+  const payload = {
+    name, price: +price,
+    emoji: document.getElementById('item-emoji').value || null,
+    description: document.getElementById('item-desc').value || null,
+    category_id: document.getElementById('item-cat').value || null,
+    prep_time_min: +document.getElementById('item-prep').value || null,
+    calories: +document.getElementById('item-calories').value || null,
+    is_veg: document.getElementById('item-veg').checked,
+    is_featured: document.getElementById('item-featured').checked,
+    is_available: document.getElementById('item-available').checked,
+  };
+  try {
+    if (editingItemId) { await API.menu.update(editingItemId, payload); Toast.success('Item updated!'); }
+    else               { await API.menu.create(payload);                Toast.success('Item added!'); }
+    Modal.close('item-modal');
+    await loadMenu();
+  } catch (err) { Toast.error(err.message); }
+  finally { Form.setLoading(btn, false); }
+}
+
+async function toggleItem(id, checkbox) {
+  try {
+    await API.menu.toggle(id);
+    const item = allItems.find(i => i.id == id);
+    if (item) item.is_available = checkbox.checked;
+    Toast.success(checkbox.checked ? 'Item marked available' : 'Item marked sold out');
+    document.getElementById('stat-avail').textContent = allItems.filter(i=>i.is_available).length;
+    document.getElementById('stat-sold').textContent  = allItems.filter(i=>!i.is_available).length;
+  } catch (err) { checkbox.checked = !checkbox.checked; Toast.error(err.message); }
+}
+
+function openDelete(id, name) {
+  deletingItemId = id;
+  document.getElementById('delete-item-name').textContent = name;
+  Modal.open('delete-modal');
+}
+
+async function confirmDelete() {
+  if (!deletingItemId) return;
+  const btn = document.getElementById('confirm-delete-btn');
+  Form.setLoading(btn, true);
+  try {
+    await API.menu.remove(deletingItemId);
+    Toast.success('Item deleted');
+    Modal.close('delete-modal');
+    await loadMenu();
+  } catch (err) { Toast.error(err.message); }
+  finally { Form.setLoading(btn, false); }
+}
+
+async function saveCategory() {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) { Form.showError('cat-name','Category name is required'); return; }
+  try {
+    await API.menu.categories.create({ name, emoji: document.getElementById('cat-emoji').value || null });
+    Toast.success('Category added!');
+    Modal.close('cat-modal');
+    document.getElementById('cat-name').value = '';
+    document.getElementById('cat-emoji').value = '';
+    await loadMenu();
+  } catch (err) { Toast.error(err.message); }
+}
+async function editCategory(id) { Toast.info('Category edit — coming soon'); }
+async function deleteCategory(id) { if(confirm('Delete this category?')) { try { await API.menu.categories.remove(id); Toast.success('Deleted'); await loadMenu(); } catch(e){Toast.error(e.message);} } }
+</script>
+</body>
+</html>

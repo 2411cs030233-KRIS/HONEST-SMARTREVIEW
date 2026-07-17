@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print Bill — SmartReview</title>
+<style>
+/* ── SCREEN VIEW ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Courier New',monospace;
+  background:#f0f0f0;
+  display:flex;align-items:flex-start;justify-content:center;
+  min-height:100vh;padding:20px;
+}
+.bill-wrap{
+  background:#fff;
+  width:80mm;
+  padding:8mm 6mm;
+  box-shadow:0 4px 24px rgba(0,0,0,.15);
+  border-radius:4px;
+}
+
+/* ── THERMAL BILL STYLES ── */
+.rest-name{font-size:14pt;font-weight:700;text-align:center;margin-bottom:2mm}
+.rest-addr{font-size:8pt;text-align:center;color:#444;margin-bottom:1mm}
+.gstin-line{font-size:7.5pt;text-align:center;color:#222;font-weight:700;margin-bottom:2mm}
+.divider{border:none;border-top:1px dashed #999;margin:3mm 0}
+.bill-meta{font-size:8pt;margin-bottom:1mm;display:flex;justify-content:space-between}
+.section-hdr{font-size:8pt;font-weight:700;display:flex;justify-content:space-between;margin:2mm 0 1mm;border-bottom:1px solid #ccc;padding-bottom:1mm}
+.item-row{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:1.5mm;gap:4mm}
+.item-name{flex:1}
+.item-qty{width:10mm;text-align:center}
+.item-rate{width:14mm;text-align:right}
+.item-amt{width:14mm;text-align:right;font-weight:600}
+.total-row{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:1mm}
+.total-row.gst{color:#555}
+.total-row.disc{color:#0E9E6A;font-weight:600}
+.total-row.grand{font-size:11pt;font-weight:700;border-top:1.5px solid #000;padding-top:2mm;margin-top:2mm}
+.payment-row{font-size:8pt;margin-top:2mm;display:flex;justify-content:space-between}
+.qr-section{text-align:center;margin:3mm 0}
+.qr-placeholder{
+  width:28mm;height:28mm;border:1px solid #ccc;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:7pt;color:#999;border-radius:2px;
+  margin:2mm auto;
+}
+.qr-label{font-size:7.5pt;color:#555}
+.footer{font-size:7.5pt;text-align:center;color:#666;margin-top:3mm;line-height:1.6}
+.tax-note{font-size:7pt;text-align:center;color:#888;margin-top:2mm;border-top:1px dashed #ccc;padding-top:2mm}
+
+/* ── SCREEN-ONLY CONTROLS ── */
+.screen-controls{
+  position:fixed;bottom:20px;right:20px;
+  display:flex;flex-direction:column;gap:8px;
+  z-index:100;
+}
+.ctrl-btn{
+  padding:10px 20px;border:none;border-radius:8px;
+  font-size:.875rem;font-weight:700;cursor:pointer;
+  font-family:'Plus Jakarta Sans',-apple-system,sans-serif;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+.btn-print{background:#0F1623;color:#fff}
+.btn-close{background:#fff;color:#6B7280;border:1px solid #E5E7EB}
+.loading{text-align:center;padding:40px;color:#6B7280}
+
+/* ── PRINT ── */
+@media print {
+  body{background:#fff;padding:0;display:block}
+  .screen-controls{display:none}
+  .bill-wrap{
+    box-shadow:none;border-radius:0;
+    width:80mm;margin:0;padding:5mm 4mm;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="screen-controls">
+  <button class="ctrl-btn btn-print" onclick="window.print()">🖨️ Print Bill</button>
+  <button class="ctrl-btn btn-close" onclick="window.close()">✕ Close</button>
+</div>
+
+<div class="bill-wrap" id="bill-wrap">
+  <div class="loading" id="loading">Loading bill…</div>
+</div>
+
+<script>
+var API_URL = (window.SR_CONFIG && window.SR_CONFIG.API_URL) || 'http://localhost:3000/api/v1';
+var params  = new URLSearchParams(window.location.search);
+var billId  = params.get('bill_id');
+var token   = localStorage.getItem('sr_access_token');
+
+function num(n, dec) {
+  return Number(n||0).toLocaleString('en-IN', {
+    minimumFractionDigits: dec||0, maximumFractionDigits: dec||0
+  });
+}
+
+async function loadAndRender() {
+  if (!billId) { document.getElementById('loading').textContent = 'No bill_id in URL.'; return; }
+
+  try {
+    var res = await fetch(API_URL + '/bills/' + billId, {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load bill');
+    renderBill(data.data);
+  } catch (err) {
+    document.getElementById('loading').textContent = 'Error: ' + err.message;
+  }
+}
+
+function renderBill(bill) {
+  var items   = bill.items || [];
+  var sub     = +bill.subtotal || +bill.total;
+  var discPct = +bill.discount_pct || 0;
+  var discAmt = Math.round(sub * discPct / 100);
+  var taxable = sub - discAmt;
+  var cgst    = Math.round(taxable * 0.025);
+  var sgst    = Math.round(taxable * 0.025);
+  var total   = taxable + cgst + sgst;
+
+  var now     = new Date(bill.created_at || Date.now());
+  var dateStr = now.toLocaleDateString('en-IN',  {day:'2-digit',month:'short',year:'numeric'});
+  var timeStr = now.toLocaleTimeString('en-IN',  {hour:'2-digit',minute:'2-digit'});
+
+  // Item rows
+  var itemHTML = items.map(function(i) {
+    var amt = Math.round(+i.price * (+i.qty||1));
+    return '<div class="item-row">' +
+      '<span class="item-name">' + (i.emoji||'') + ' ' + i.name + '</span>' +
+      '<span class="item-qty">' + (i.qty||1) + '</span>' +
+      '<span class="item-rate">₹' + num(i.price) + '</span>' +
+      '<span class="item-amt">₹' + num(amt) + '</span>' +
+    '</div>';
+  }).join('');
+
+  // GST breakdown
+  var discRow = discPct > 0
+    ? '<div class="total-row disc"><span>Google Discount (' + discPct + '%)</span><span>-₹' + num(discAmt) + '</span></div>'
+    : '';
+
+  var gstinLine = bill.gstin
+    ? '<div class="gstin-line">GSTIN: ' + bill.gstin + '</div>'
+    : '';
+
+  var fssaiLine = bill.fssai
+    ? '<div class="rest-addr">FSSAI: ' + bill.fssai + '</div>'
+    : '';
+
+  // QR section for customer URL
+  var baseUrl    = window.location.origin;
+  var customerUrl= baseUrl + '/customer-bill.html?bill_id=' + bill.id;
+
+  // Payment info
+  var payMethod = (bill.payment_method || '').toUpperCase() || '—';
+  var payId     = bill.payment_id || '';
+  var payStatus = bill.status === 'paid' ? '✓ PAID' : 'PENDING';
+
+  var html =
+    // Header
+    '<div class="rest-name">' + (bill.restaurant_name || 'Restaurant') + '</div>' +
+    '<div class="rest-addr">' + (bill.restaurant_address || '') + '</div>' +
+    (bill.restaurant_phone ? '<div class="rest-addr">Ph: ' + bill.restaurant_phone + '</div>' : '') +
+    gstinLine + fssaiLine +
+
+    '<hr class="divider">' +
+
+    // Bill meta
+    '<div class="bill-meta"><span><b>Bill No:</b> ' + bill.bill_number + '</span><span>' + payStatus + '</span></div>' +
+    '<div class="bill-meta"><span><b>Date:</b> ' + dateStr + '</span><span>' + timeStr + '</span></div>' +
+    '<div class="bill-meta"><span><b>Table:</b> ' + (bill.table_number || '—') + '</span>' +
+    (bill.cashier_name ? '<span><b>Cashier:</b> ' + bill.cashier_name + '</span>' : '') + '</div>' +
+    (bill.customer_name ? '<div class="bill-meta"><span><b>Customer:</b> ' + bill.customer_name + '</span></div>' : '') +
+
+    '<hr class="divider">' +
+
+    // Items header
+    '<div class="section-hdr">' +
+      '<span style="flex:1">ITEM</span>' +
+      '<span style="width:10mm;text-align:center">QTY</span>' +
+      '<span style="width:14mm;text-align:right">RATE</span>' +
+      '<span style="width:14mm;text-align:right">AMT</span>' +
+    '</div>' +
+
+    itemHTML +
+
+    '<hr class="divider">' +
+
+    // Totals
+    '<div class="total-row"><span>Subtotal</span><span>₹' + num(sub) + '</span></div>' +
+    discRow +
+    '<div class="total-row gst"><span>Taxable amount</span><span>₹' + num(taxable) + '</span></div>' +
+    '<div class="total-row gst"><span>CGST @ 2.5%</span><span>₹' + num(cgst) + '</span></div>' +
+    '<div class="total-row gst"><span>SGST @ 2.5%</span><span>₹' + num(sgst) + '</span></div>' +
+    '<div class="total-row grand"><span>TOTAL</span><span>₹' + num(total) + '</span></div>' +
+
+    // Payment details
+    (bill.status === 'paid' ? (
+      '<hr class="divider">' +
+      '<div class="payment-row"><span>Payment Method</span><span>' + payMethod + '</span></div>' +
+      (payId ? '<div class="payment-row"><span>Ref</span><span style="font-size:7pt">' + payId.slice(-12) + '</span></div>' : '')
+    ) : '') +
+
+    '<hr class="divider">' +
+
+    // QR code for customer to scan & pay/rate
+    '<div class="qr-section">' +
+      '<div class="qr-label">Scan to pay &amp; rate us ⭐</div>' +
+      '<div class="qr-placeholder" id="qr-container">📱</div>' +
+      '<div class="qr-label" style="font-size:6.5pt;margin-top:2mm">' + customerUrl + '</div>' +
+    '</div>' +
+
+    '<hr class="divider">' +
+
+    '<div class="footer">' +
+      'Thank you for dining with us! 🙏<br>' +
+      'Please visit again soon.' +
+    '</div>' +
+    '<div class="tax-note">This is a computer-generated invoice.<br>' +
+      (bill.gstin ? 'GST Invoice — ' + (bill.restaurant_name||'') : 'Tax invoice') +
+    '</div>';
+
+  document.getElementById('bill-wrap').innerHTML = html;
+
+  // Generate QR code if library available
+  if (typeof QRCode !== 'undefined') {
+    var qrEl = document.getElementById('qr-container');
+    if (qrEl) {
+      qrEl.textContent = '';
+      qrEl.style.border = 'none';
+      new QRCode(qrEl, {
+        text: customerUrl, width: 100, height: 100,
+        colorDark: '#000', colorLight: '#fff',
+      });
+    }
+  }
+}
+
+loadAndRender();
+</script>
+
+<!-- QRCode.js for generating the QR code on the bill -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" onload="loadAndRender()"></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign In — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/auth.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+</head>
+<body>
+<div class="auth-shell">
+
+  <!-- LEFT: Branding -->
+  <div class="auth-brand">
+    <div class="auth-brand-logo">
+      <div class="auth-brand-mark"><i class="ti ti-star"></i></div>
+      <span class="auth-brand-name">SmartReview</span>
+    </div>
+    <div class="auth-brand-body">
+      <h2 class="auth-brand-tagline">Turn every meal into a <em>5-star Google review</em></h2>
+      <p class="auth-brand-desc">QR billing, instant feedback, WhatsApp loyalty, and AI analytics — built for Indian restaurants.</p>
+      <div class="auth-features">
+        <div class="auth-feature"><div class="auth-feature-icon">📱</div>QR bill generation in under 30 seconds</div>
+        <div class="auth-feature"><div class="auth-feature-icon">⭐</div>Google Review Gate — only happy customers post publicly</div>
+        <div class="auth-feature"><div class="auth-feature-icon">💬</div>Automated WhatsApp win-back campaigns</div>
+        <div class="auth-feature"><div class="auth-feature-icon">🤖</div>AI complaint predictor and revenue optimizer</div>
+      </div>
+    </div>
+    <div class="auth-brand-stats">
+      <div><span class="auth-stat-val">2,400+</span><span class="auth-stat-label">Restaurants</span></div>
+      <div><span class="auth-stat-val">18L+</span><span class="auth-stat-label">Bills generated</span></div>
+      <div><span class="auth-stat-val">4.7★</span><span class="auth-stat-label">Avg Google rating</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Form -->
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+
+      <!-- Session expired / registered alerts -->
+      <div id="page-alert" class="alert mb-5" style="display:none">
+        <i class="ti ti-info-circle"></i>
+        <span id="page-alert-msg"></span>
+      </div>
+
+      <div class="auth-form-header">
+        <h1>Welcome back 👋</h1>
+        <p>Sign in to your SmartReview dashboard</p>
+      </div>
+
+      <form id="login-form" novalidate>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <div class="input-group">
+            <i class="ti ti-mail input-icon"></i>
+            <input type="email" id="email" class="form-input"
+              placeholder="owner@restaurant.com" autocomplete="email" required>
+          </div>
+          <span class="form-error" id="email-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-group">
+            <i class="ti ti-lock input-icon"></i>
+            <input type="password" id="password" class="form-input"
+              placeholder="Your password" autocomplete="current-password" required>
+            <button type="button" class="input-toggle" id="pwd-toggle">
+              <i class="ti ti-eye"></i>
+            </button>
+          </div>
+          <span class="form-error" id="password-error"></span>
+        </div>
+
+        <div class="auth-options">
+          <label class="form-check">
+            <input type="checkbox" id="remember-me">
+            <label for="remember-me">Remember me</label>
+          </label>
+          <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+        </div>
+
+        <!-- API error banner -->
+        <div id="form-error-banner" class="alert alert-danger mb-4" style="display:none">
+          <i class="ti ti-alert-circle"></i>
+          <span id="form-error-msg"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="login-btn">
+          <i class="ti ti-login"></i> Sign in
+        </button>
+
+      </form>
+
+      <div class="divider-text mt-5 mb-4">or continue with</div>
+
+      <button class="btn btn-secondary btn-block" id="demo-btn">
+        <i class="ti ti-player-play"></i> Use demo account
+      </button>
+
+      <div class="auth-form-footer mt-5">
+        Don't have an account? <a href="register.html">Create one free →</a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // If already logged in → go straight to dashboard (RULE 5 via requireGuest)
+  if (!API.requireGuest()) return;
+
+  const params = new URLSearchParams(window.location.search);
+
+  // Show contextual alerts
+  const alertEl  = document.getElementById('page-alert');
+  const alertMsg = document.getElementById('page-alert-msg');
+  if (params.get('expired') === '1') {
+    alertEl.className = 'alert alert-warning mb-5';
+    alertEl.style.display = 'flex';
+    alertMsg.textContent  = 'Your session expired. Please sign in again.';
+  }
+  if (params.get('registered') === '1') {
+    alertEl.className = 'alert alert-success mb-5';
+    alertEl.style.display = 'flex';
+    alertMsg.textContent  = '✅ Account created! Sign in to get started.';
+  }
+
+  // Password toggle
+  document.getElementById('pwd-toggle').addEventListener('click', function () {
+    const pwd  = document.getElementById('password');
+    const icon = this.querySelector('i');
+    if (pwd.type === 'password') { pwd.type = 'text';     icon.className = 'ti ti-eye-off'; }
+    else                         { pwd.type = 'password'; icon.className = 'ti ti-eye';     }
+  });
+
+  // Enter on email → focus password
+  document.getElementById('email').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('password').focus();
+  });
+
+  // ── FORM SUBMIT ─────────────────────────────────────────
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const remember = document.getElementById('remember-me').checked;
+
+    // Client-side validation
+    let valid = true;
+    Form.clearAllErrors(e.target);
+    document.getElementById('form-error-banner').style.display = 'none';
+
+    if (!email) {
+      Form.showError('email', 'Email is required'); valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Form.showError('email', 'Enter a valid email address'); valid = false;
+    }
+    if (!password) {
+      Form.showError('password', 'Password is required'); valid = false;
+    }
+    if (!valid) return;
+
+    const btn = document.getElementById('login-btn');
+    Form.setLoading(btn, true);
+
+    try {
+      // RULE 5: API.auth.loginAndStore → POST /auth/login → authController.login
+      // Returns: { token, restaurant: { id, name, email, plan, is_active } }
+      await API.auth.loginAndStore(email, password);
+
+      // If remember-me is checked, set a long-lived marker
+      if (remember) localStorage.setItem('sr_remember', '1');
+      else          localStorage.removeItem('sr_remember');
+
+      Toast.success('Welcome back!');
+
+      // Redirect to intended page or dashboard
+      const next = params.get('next');
+      setTimeout(() => {
+        window.location.href = (next && next.startsWith('/')) ? next : '/dashboard.html';
+      }, 500);
+
+    } catch (err) {
+      Form.setLoading(btn, false);
+      // Map backend error codes to specific field errors
+      if (err.status === 401) {
+        Form.showError('password', 'Incorrect email or password');
+      } else if (err.status === 403) {
+        const banner = document.getElementById('form-error-banner');
+        document.getElementById('form-error-msg').textContent = 'Account deactivated. Contact support@smartreview.in';
+        banner.style.display = 'flex';
+      } else if (err.status === 0) {
+        const banner = document.getElementById('form-error-banner');
+        document.getElementById('form-error-msg').textContent = 'Cannot connect to server. Check your internet.';
+        banner.style.display = 'flex';
+      } else {
+        const banner = document.getElementById('form-error-banner');
+        document.getElementById('form-error-msg').textContent = err.message;
+        banner.style.display = 'flex';
+      }
+    }
+  });
+
+  // ── DEMO LOGIN ───────────────────────────────────────────
+  document.getElementById('demo-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('demo-btn');
+    Form.setLoading(btn, true);
+    try {
+      await API.auth.loginAndStore('demo@smartreview.in', 'Demo@1234');
+      Toast.info('Signed in as demo account');
+      setTimeout(() => { window.location.href = '/dashboard.html'; }, 500);
+    } catch {
+      // Backend demo account may not exist — pre-fill form instead
+      document.getElementById('email').value    = 'demo@smartreview.in';
+      document.getElementById('password').value = 'Demo@1234';
+      Toast.info('Demo credentials filled — press Sign in');
+      Form.setLoading(btn, false);
+    }
+  });
+
+});
+</script>
+</body>
+</html>

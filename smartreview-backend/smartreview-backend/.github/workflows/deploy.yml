@@ -1,0 +1,106 @@
+name: SmartReview CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── TEST: run on every push and PR ──────────────────────────
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: smartreview_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: smartreview-backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./smartreview-backend
+        run: npm ci
+
+      - name: Run database migrations
+        working-directory: ./smartreview-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/smartreview_test
+        run: psql $DATABASE_URL -f migrations/001_schema.sql
+
+      - name: Lint
+        working-directory: ./smartreview-backend
+        run: npm run lint --if-present
+
+      - name: Run tests
+        working-directory: ./smartreview-backend
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: smartreview_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_secret_for_ci_only
+        run: npm test --if-present
+
+  # ── DEPLOY: only runs on push to main, after tests pass ──────
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        working-directory: ./smartreview-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service smartreview-api --detach
+
+      - name: Run migrations on production
+        working-directory: ./smartreview-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway run psql $DATABASE_URL -f migrations/001_schema.sql || true
+
+      - name: Notify deployment success
+        if: success()
+        run: echo "✅ Deployed to Railway successfully — commit ${{ github.sha }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: echo "❌ Deployment failed — check logs above"

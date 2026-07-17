@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your Bill — SmartReview</title>
+<!-- Razorpay Checkout SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#4A3CCC;--brand-l:rgba(74,60,204,.10);
+  --green:#0E9E6A;--green-l:rgba(14,158,106,.10);
+  --red:#D94040;--red-l:rgba(217,64,64,.10);
+  --gold:#E8A020;--gold-l:rgba(232,160,32,.12);
+  --ink:#0F1623;--sand:#FAF7F2;--border:#E5E7EB;
+  --white:#fff;--gray:#6B7280;--gray-l:#F9FAFB;
+  --shadow:0 8px 32px rgba(15,22,35,.12);--r:12px;
+}
+body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#F0F2F5;color:var(--ink);min-height:100vh}
+.shell{max-width:420px;margin:0 auto;min-height:100vh;background:var(--white);box-shadow:var(--shadow);position:relative}
+
+/* ── HEADER ── */
+.hdr{background:var(--ink);padding:18px 16px 14px;color:#fff;text-align:center}
+.hdr-rest{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:3px}
+.hdr-title{font-size:1.25rem;font-weight:800}
+.hdr-sub{font-size:.78rem;color:rgba(255,255,255,.45);margin-top:2px}
+
+/* ── STEP BAR ── */
+.steps{display:flex;background:var(--ink);padding:0 0 12px}
+.step{flex:1;text-align:center;font-size:.62rem;font-weight:600;color:rgba(255,255,255,.3);position:relative;padding-bottom:8px}
+.step::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:2px;background:rgba(255,255,255,.15);border-radius:2px}
+.step.active{color:rgba(255,255,255,.9)}
+.step.active::after{background:var(--brand)}
+.step.done{color:var(--green)}
+.step.done::after{background:var(--green)}
+
+/* ── SCREENS ── */
+.screen{display:none}.screen.active{display:block;animation:fadeUp .2s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.body{padding:16px}
+.section-title{font-size:.75rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+
+/* ── BILL ITEMS ── */
+.bill-item{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);gap:8px}
+.bill-item:last-child{border-bottom:none}
+.item-name{font-size:.9rem;font-weight:600}
+.item-sub{font-size:.75rem;color:var(--gray);margin-top:1px}
+.item-price{font-size:.9rem;font-weight:700;white-space:nowrap}
+.totals-box{background:var(--gray-l);border-radius:var(--r);padding:12px 14px;margin-top:12px}
+.total-row{display:flex;justify-content:space-between;font-size:.875rem;margin-bottom:5px;color:var(--gray)}
+.total-row:last-child{margin-bottom:0}
+.total-row.main{font-size:1.1rem;font-weight:800;color:var(--ink);border-top:1.5px solid var(--border);padding-top:8px;margin-top:6px}
+.total-row.disc{color:var(--green);font-weight:600}
+
+/* ── STARS ── */
+.star-wrap{text-align:center;padding:16px 0 10px}
+.rate-label{font-size:.95rem;font-weight:600;margin-bottom:14px;color:var(--ink)}
+.stars{display:flex;justify-content:center;gap:8px}
+.star{font-size:2.8rem;cursor:pointer;transition:transform .15s,color .1s;color:#E5E7EB;line-height:1;user-select:none}
+.star:hover{transform:scale(1.2)}
+.star.lit{color:#F59E0B}
+.rate-hint{font-size:.8rem;color:var(--gray);margin-top:10px;min-height:22px;transition:all .2s}
+
+/* ── COMPLAINT ── */
+.comp-opts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.comp-opt{padding:8px 14px;border-radius:20px;font-size:.82rem;font-weight:600;border:1.5px solid var(--border);background:var(--white);cursor:pointer;transition:all .15s;user-select:none}
+.comp-opt.sel{background:var(--red);color:#fff;border-color:var(--red)}
+.comp-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:.875rem;resize:none;font-family:inherit;background:var(--gray-l);outline:none;transition:border-color .15s}
+.comp-textarea:focus{border-color:var(--brand);background:#fff}
+
+/* ── GOOGLE GATE ── */
+.gate-box{background:var(--gold-l);border:1.5px solid rgba(232,160,32,.4);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:16px}
+.gate-emoji{font-size:2.5rem;margin-bottom:8px}
+.gate-title{font-size:1.05rem;font-weight:800;margin-bottom:5px}
+.gate-sub{font-size:.85rem;color:var(--gray);line-height:1.6}
+.disc-preview{display:inline-block;background:var(--green);color:#fff;font-size:.85rem;font-weight:700;padding:4px 14px;border-radius:20px;margin:10px 0}
+
+/* ── PAYMENT METHOD ── */
+.pay-method{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--r);margin-bottom:9px;cursor:pointer;transition:all .15s;user-select:none}
+.pay-method:hover,.pay-method.sel{border-color:var(--brand);background:var(--brand-l)}
+.pay-method-icon{font-size:1.5rem;width:36px;text-align:center;flex-shrink:0}
+.pay-method-title{font-size:.92rem;font-weight:700}
+.pay-method-sub{font-size:.75rem;color:var(--gray)}
+.pay-method-check{margin-left:auto;color:var(--brand);font-size:1.1rem;display:none}
+.pay-method.sel .pay-method-check{display:block}
+.pay-summary{background:var(--gray-l);border-radius:var(--r);padding:12px 14px;margin:14px 0}
+
+/* ── BUTTONS ── */
+.btn{width:100%;padding:14px;border-radius:var(--r);font-size:1rem;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .18s;font-family:inherit;margin-bottom:9px}
+.btn:last-child{margin-bottom:0}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover:not(:disabled){background:#0a7d54}
+.btn-brand{background:var(--brand);color:#fff}.btn-brand:hover:not(:disabled){background:#3B31A4}
+.btn-gold{background:var(--gold);color:var(--ink)}.btn-gold:hover:not(:disabled){background:#c8880e}
+.btn-outline{background:transparent;color:var(--gray);border:1.5px solid var(--border)}.btn-outline:hover:not(:disabled){border-color:var(--gray);color:var(--ink)}
+.btn-red{background:var(--red);color:#fff}
+.btn-sm{padding:10px;font-size:.875rem}
+
+/* ── SUCCESS ── */
+.success-center{text-align:center;padding:20px 0}
+.success-emoji{font-size:3.5rem;margin-bottom:12px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.success-title{font-size:1.3rem;font-weight:800;margin-bottom:6px}
+.success-sub{font-size:.9rem;color:var(--gray);line-height:1.65}
+.disc-badge{display:inline-block;background:var(--ink);color:var(--gold);font-size:2.2rem;font-weight:800;padding:12px 24px;border-radius:var(--r);margin:14px 0;letter-spacing:-1px}
+
+/* ── GST INVOICE ── */
+.invoice-wrap{font-family:'Courier New',monospace;font-size:.78rem;line-height:1.6;color:var(--ink)}
+.invoice-header{text-align:center;border-bottom:1px dashed var(--border);padding-bottom:10px;margin-bottom:10px}
+.invoice-rest-name{font-size:1rem;font-weight:700;margin-bottom:2px}
+.invoice-row{display:flex;justify-content:space-between;padding:2px 0}
+.invoice-row.bold{font-weight:700}
+.invoice-row.total{font-size:.9rem;font-weight:700;border-top:1px dashed var(--border);padding-top:6px;margin-top:4px}
+.invoice-row.disc{color:var(--green)}
+.invoice-divider{border:none;border-top:1px dashed var(--border);margin:8px 0}
+.invoice-footer{text-align:center;margin-top:10px;color:var(--gray);font-size:.72rem}
+.invoice-box{background:var(--gray-l);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:14px 0}
+.badge-gstin{display:inline-block;background:var(--brand-l);color:var(--brand);font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif}
+
+/* ── APOLOGY ── */
+.apology-icon{text-align:center;font-size:3rem;margin-bottom:12px;animation:pop .4s ease both}
+.apology-msg{font-size:.9rem;color:var(--gray);line-height:1.75;text-align:center;margin-bottom:16px}
+.apology-msg strong{color:var(--ink)}
+.comp-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px}
+.comp-chip-confirmed{padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--red-l);color:var(--red)}
+
+/* ── LOADING ── */
+.loading-wrap{text-align:center;padding:60px 20px;color:var(--gray)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-wrap{text-align:center;padding:40px 20px}
+.error-emoji{font-size:2.5rem;margin-bottom:12px}
+
+/* ── PRINT — GST bill thermal format ── */
+@media print {
+  body{background:#fff;margin:0;padding:0}
+  .shell{box-shadow:none;max-width:80mm;margin:0}
+  .hdr,.steps,.btn,.screen:not(#scr-invoice){display:none!important}
+  #scr-invoice{display:block!important}
+  .invoice-box{border:none;background:#fff;padding:4px}
+  .invoice-wrap{font-size:8pt}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-rest" id="hdr-rest">Loading…</div>
+    <div class="hdr-title" id="hdr-title">Your Bill</div>
+    <div class="hdr-sub" id="hdr-sub"></div>
+  </div>
+
+  <!-- STEP BAR -->
+  <div class="steps">
+    <div class="step active" id="s-bill">Bill</div>
+    <div class="step" id="s-rate">Rate</div>
+    <div class="step" id="s-pay">Pay</div>
+    <div class="step" id="s-done">Done</div>
+  </div>
+
+  <!-- ══ SCREEN 1: Bill summary ══ -->
+  <div class="screen active" id="scr-bill">
+    <div class="body">
+      <div class="section-title">Order details</div>
+      <div id="bill-items">
+        <div class="loading-wrap"><div class="spinner"></div>Loading your bill…</div>
+      </div>
+      <div id="bill-totals" style="display:none"></div>
+    </div>
+    <div class="body" style="border-top:1px solid var(--border);padding-top:14px">
+      <div class="star-wrap">
+        <div class="rate-label">How was your experience? ✨</div>
+        <div class="stars" id="stars-row">
+          <span class="star" data-r="1">★</span>
+          <span class="star" data-r="2">★</span>
+          <span class="star" data-r="3">★</span>
+          <span class="star" data-r="4">★</span>
+          <span class="star" data-r="5">★</span>
+        </div>
+        <div class="rate-hint" id="rate-hint">Tap a star to continue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2A: Google Gate (4-5★) ══ -->
+  <div class="screen" id="scr-gate">
+    <div class="body">
+      <div class="gate-box">
+        <div class="gate-emoji">🌟</div>
+        <div class="gate-title">Unlock your discount!</div>
+        <div class="gate-sub">You rated us <strong id="gate-rating-label">5★</strong>! Leave a Google review to get</div>
+        <div class="disc-preview" id="disc-preview-badge">5% OFF your bill</div>
+        <div class="gate-sub" style="margin-top:4px">applied instantly before you pay.</div>
+      </div>
+      <button class="btn btn-gold" id="google-review-btn" onclick="openGoogleReview()">
+        ⭐ Leave Google Review & Save
+      </button>
+      <button class="btn btn-outline" onclick="skipGoogleReview()">
+        Skip — pay full amount
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2B: Complaint form (1-3★) ══ -->
+  <div class="screen" id="scr-complaint">
+    <div class="body">
+      <div class="section-title" style="color:var(--red)">What went wrong?</div>
+      <p style="font-size:.85rem;color:var(--gray);margin-bottom:12px">We're sorry. Please tell us so we can fix it.</p>
+      <div class="comp-opts" id="comp-opts">
+        <span class="comp-opt" data-val="Waiting Time">⏱️ Waiting Time</span>
+        <span class="comp-opt" data-val="Food Quality">🍽️ Food Quality</span>
+        <span class="comp-opt" data-val="Service">🙋 Service</span>
+        <span class="comp-opt" data-val="Cleanliness">🧹 Cleanliness</span>
+        <span class="comp-opt" data-val="Wrong Order">❌ Wrong Order</span>
+        <span class="comp-opt" data-val="Portion Size">🍜 Portion Size</span>
+        <span class="comp-opt" data-val="Pricing">💰 Pricing</span>
+        <span class="comp-opt" data-val="Temperature">🌡️ Food Temperature</span>
+      </div>
+      <textarea class="comp-textarea" id="comp-comment" rows="3"
+        placeholder="Anything else you'd like to tell us? (optional)"></textarea>
+      <div style="margin-top:12px">
+        <button class="btn btn-red" onclick="submitComplaint()">
+          Submit feedback & continue to payment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 3: Payment ══ -->
+  <div class="screen" id="scr-pay">
+    <div class="body">
+      <div class="section-title">Choose payment method</div>
+
+      <div class="pay-method sel" data-method="upi" onclick="selectPay('upi',this)">
+        <div class="pay-method-icon">📱</div>
+        <div><div class="pay-method-title">UPI Payment</div>
+        <div class="pay-method-sub">GPay · PhonePe · Paytm · BHIM</div></div>
+        <div class="pay-method-check">✓</div>
+      </div>
+      <div class="pay-method" data-method="card" onclick="selectPay('card',this)">
+        <div class="pay-method-icon">💳</div>
+        <div><div class="pay-method-title">Credit / Debit Card</div>
+        <div class="pay-method-sub">Visa · Mastercard · RuPay</div></div>
+        <div class="pay-method-check">✓</div>
+      </div>
+      <div class="pay-method" data-method="cash" onclick="selectPay('cash',this)">
+        <div class="pay-method-icon">💵</div>
+        <div><div class="pay-method-title">Pay at Counter</div>
+        <div class="pay-method-sub">Cash · Inform the cashier</div></div>
+        <div class="pay-method-check">✓</div>
+      </div>
+
+      <div class="pay-summary" id="pay-summary"></div>
+
+      <div id="pay-error" style="display:none;color:var(--red);font-size:.85rem;margin-bottom:10px;padding:10px;background:var(--red-l);border-radius:var(--r)"></div>
+
+      <button class="btn btn-green" id="pay-btn" onclick="processPayment()">
+        Pay <span id="pay-btn-amt">—</span> →
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 4A: Success (happy customer) ══ -->
+  <div class="screen" id="scr-success">
+    <div class="body">
+      <div class="success-center">
+        <div class="success-emoji">✅</div>
+        <div class="success-title">Payment successful!</div>
+        <p class="success-sub">Thank you for dining at <strong id="suc-rest-name">—</strong>.<br>A receipt has been sent to your WhatsApp.</p>
+        <div id="disc-badge-wrap" style="display:none">
+          <div style="font-size:.8rem;color:var(--gray);margin-bottom:4px">You saved</div>
+          <div class="disc-badge" id="disc-badge-val">5%</div>
+          <div style="font-size:.8rem;color:var(--gray)">with your Google review 🎉</div>
+        </div>
+      </div>
+
+      <!-- GST Invoice -->
+      <div class="section-title" style="margin-top:6px">Tax invoice</div>
+      <div class="invoice-box" id="gst-invoice-success"></div>
+      <button class="btn btn-outline btn-sm" onclick="printInvoice()">
+        🖨️ Print / Save invoice
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 4B: Cash intent (pay at counter) ══ -->
+  <div class="screen" id="scr-cash">
+    <div class="body">
+      <div class="success-center">
+        <div class="success-emoji">🧾</div>
+        <div class="success-title">Please pay at the counter</div>
+        <p class="success-sub">Show this screen to the cashier to pay <strong id="cash-amt">—</strong> in cash.</p>
+        <div style="background:var(--ink);color:var(--gold);font-size:1.8rem;font-weight:800;padding:14px 24px;border-radius:var(--r);display:inline-block;margin:14px 0;letter-spacing:1px" id="cash-bill-num">—</div>
+        <p style="font-size:.8rem;color:var(--gray)">Bill number — tell this to the cashier</p>
+      </div>
+      <div class="invoice-box" id="gst-invoice-cash"></div>
+      <button class="btn btn-outline btn-sm" onclick="printInvoice()">🖨️ Print invoice</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 4C: Apology (unhappy after payment) ══ -->
+  <div class="screen" id="scr-apology">
+    <div class="body">
+      <div class="apology-icon">🙏</div>
+      <h2 style="text-align:center;font-size:1.15rem;font-weight:800;margin-bottom:10px">Thank you for your honest feedback</h2>
+      <p class="apology-msg">
+        We have <strong>personally noted your complaint</strong> and our manager
+        has been notified immediately.<br><br>
+        We sincerely apologise. We are committed to
+        <strong>fixing this issue</strong> and making sure it
+        <strong>never happens again.</strong><br><br>
+        We humbly request a <strong>second chance</strong> to serve you better. 🙏
+      </p>
+      <div id="comp-confirm-section" style="display:none;margin-bottom:16px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.05em;text-align:center;margin-bottom:6px">Noted by our team</div>
+        <div class="comp-chips" id="comp-confirm-chips"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:16px">
+      <p style="font-size:.85rem;color:var(--gray);text-align:center;line-height:1.65;margin-bottom:14px">
+        Your honest feedback helps us improve. If you'd like to share your experience on Google:
+      </p>
+      <button class="btn btn-brand" id="apology-google-btn" onclick="openGoogleFromApology()">
+        ⭐ Leave a Google Review
+      </button>
+      <button class="btn btn-outline" onclick="skipFromApology()">
+        Maybe later — thank you 🙏
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 4D: All done ══ -->
+  <div class="screen" id="scr-done">
+    <div class="body">
+      <div class="success-center">
+        <div class="success-emoji">🙏</div>
+        <div class="success-title">Thank you for understanding</div>
+        <p class="success-sub">We truly value your feedback. Our team will work hard to improve.<br><br>We hope to see you again soon and give you a <strong>much better experience!</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: GST Invoice (print target) ══ -->
+  <div class="screen" id="scr-invoice" style="display:none">
+    <div class="body">
+      <div class="invoice-box" id="gst-invoice-print"></div>
+    </div>
+  </div>
+
+</div><!-- .shell -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+var API_URL        = (window.SR_CONFIG && window.SR_CONFIG.API_URL) || 'http://localhost:3000/api/v1';
+var billData       = null;
+var selectedRating = 0;
+var selectedComps  = [];
+var selectedPay    = 'upi';
+var googleDone     = false;
+var paymentResult  = null;  // stores result after successful payment
+
+var params = new URLSearchParams(window.location.search);
+var billId = params.get('bill_id');
+
+// ══════════════════════════════════════════════════════════════
+//  API HELPER — no auth token needed (public routes)
+// ══════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  var res  = await fetch(API_URL + path, opts);
+  var data = await res.json().catch(function() { return {}; });
+  if (!res.ok) throw new Error(data.error || 'Request failed (' + res.status + ')');
+  return data;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  if (!billId) { showError('Invalid bill link. Please scan the QR code again.'); return; }
+  loadBill();
+  initStars();
+  initComplaintOpts();
+});
+
+// ══════════════════════════════════════════════════════════════
+//  LOAD BILL — GET /bills/:id (public)
+// ══════════════════════════════════════════════════════════════
+async function loadBill() {
+  try {
+    var res  = await api('GET', '/bills/' + billId);
+    billData = res.data;
+
+    // Header
+    document.getElementById('hdr-rest').textContent  = (billData.restaurant_name || '').toUpperCase();
+    document.getElementById('hdr-sub').textContent   =
+      'Table ' + (billData.table_number || '—') + '  ·  Bill #' + billData.bill_number;
+
+    if (billData.status === 'paid') {
+      showError('This bill has already been paid. Thank you!');
+      return;
+    }
+
+    // Set Google review URL
+    var gUrl = billData.google_review_url || '';
+    document.getElementById('google-review-btn').dataset.gurl   = gUrl;
+    document.getElementById('apology-google-btn').dataset.gurl  = gUrl;
+    if (!gUrl) {
+      document.getElementById('google-review-btn').style.display  = 'none';
+      document.getElementById('apology-google-btn').style.display = 'none';
+    }
+
+    // Render items
+    var items = billData.items || [];
+    if (items.length) {
+      document.getElementById('bill-items').innerHTML = items.map(function(i) {
+        return '<div class="bill-item">' +
+          '<div><div class="item-name">' + (i.emoji||'') + ' ' + i.name + '</div>' +
+          (i.qty > 1 ? '<div class="item-sub">₹' + num(i.price) + ' × ' + i.qty + '</div>' : '') +
+          '</div>' +
+          '<div class="item-price">₹' + num(i.price * i.qty) + '</div>' +
+          '</div>';
+      }).join('');
+    } else {
+      document.getElementById('bill-items').innerHTML = '<p style="color:var(--gray);font-size:.875rem;padding:8px 0">No items found</p>';
+    }
+
+    // Render totals
+    var sub  = +billData.subtotal || +billData.total;
+    var gst  = Math.round(sub * 0.05);
+    renderTotals(sub, gst, 0, 0);
+    renderPaySummary(sub, gst, 0, 0);
+
+    document.getElementById('bill-totals').style.display = 'block';
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  STARS
+// ══════════════════════════════════════════════════════════════
+function initStars() {
+  document.querySelectorAll('#stars-row .star').forEach(function(star) {
+    star.addEventListener('click', function() {
+      selectRating(parseInt(this.dataset.r));
+    });
+    star.addEventListener('mouseover', function() {
+      var r = parseInt(this.dataset.r);
+      document.querySelectorAll('#stars-row .star').forEach(function(s,i) {
+        s.style.color = i < r ? '#F59E0B' : '#E5E7EB';
+      });
+    });
+  });
+  document.getElementById('stars-row').addEventListener('mouseleave', function() {
+    document.querySelectorAll('#stars-row .star').forEach(function(s,i) {
+      s.style.color = i < selectedRating ? '#F59E0B' : '#E5E7EB';
+    });
+  });
+}
+
+function selectRating(r) {
+  selectedRating = r;
+  document.querySelectorAll('#stars-row .star').forEach(function(s,i) {
+    s.classList.toggle('lit', i < r);
+    s.style.color = '';
+  });
+  var hints = ['', '😞 Very sorry to hear that', '😔 We apologise', '😐 We can do better', '😊 Glad you enjoyed!', '🤩 You made our day!'];
+  document.getElementById('rate-hint').textContent = hints[r] || '';
+
+  setTimeout(function() {
+    if (r >= 4) {
+      var discPct = r === 5 ? 5 : 4;
+      document.getElementById('gate-rating-label').textContent = r + '★';
+      document.getElementById('disc-preview-badge').textContent = discPct + '% OFF your bill';
+      showScreen('gate');
+    } else {
+      showScreen('complaint');
+    }
+  }, 600);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GOOGLE GATE (4-5★)
+// ══════════════════════════════════════════════════════════════
+function openGoogleReview() {
+  var gUrl = document.getElementById('google-review-btn').dataset.gurl;
+  if (gUrl) window.open(gUrl, '_blank');
+  googleDone = true;
+
+  // Submit feedback
+  var discPct = selectedRating === 5 ? 5 : 4;
+  api('POST', '/feedback/submit', {
+    bill_id: billId, rating: selectedRating,
+    complaints: [], google_review_done: true,
+  }).catch(function() {});
+
+  // Apply discount to totals
+  var sub = +billData.subtotal || +billData.total;
+  var gst = Math.round(sub * 0.05);
+  renderTotals(sub, gst, discPct, 0);
+  renderPaySummary(sub, gst, discPct, 0);
+  billData._discPct = discPct;
+  showScreen('pay');
+}
+
+function skipGoogleReview() {
+  api('POST', '/feedback/submit', {
+    bill_id: billId, rating: selectedRating,
+    complaints: [], google_review_done: false,
+  }).catch(function() {});
+  var sub = +billData.subtotal || +billData.total;
+  var gst = Math.round(sub * 0.05);
+  renderTotals(sub, gst, 0, 0);
+  renderPaySummary(sub, gst, 0, 0);
+  billData._discPct = 0;
+  showScreen('pay');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  COMPLAINT FORM (1-3★)
+// ══════════════════════════════════════════════════════════════
+function initComplaintOpts() {
+  document.querySelectorAll('.comp-opt').forEach(function(el) {
+    el.addEventListener('click', function() {
+      this.classList.toggle('sel');
+      var val = this.dataset.val;
+      var idx = selectedComps.indexOf(val);
+      if (idx === -1) selectedComps.push(val);
+      else selectedComps.splice(idx, 1);
+    });
+  });
+}
+
+async function submitComplaint() {
+  var comment = document.getElementById('comp-comment').value.trim();
+  if (!selectedComps.length && !comment) {
+    alert('Please select at least one issue or add a comment.');
+    return;
+  }
+
+  try {
+    await api('POST', '/feedback/submit', {
+      bill_id: billId, rating: selectedRating,
+      complaints: selectedComps, comment: comment || null,
+      google_review_done: false,
+    });
+  } catch (e) { /* non-fatal — payment still proceeds */ }
+
+  var sub = +billData.subtotal || +billData.total;
+  var gst = Math.round(sub * 0.05);
+  renderTotals(sub, gst, 0, 0);
+  renderPaySummary(sub, gst, 0, 0);
+  billData._discPct = 0;
+  showScreen('pay');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PAYMENT METHOD
+// ══════════════════════════════════════════════════════════════
+function selectPay(method, el) {
+  selectedPay = method;
+  document.querySelectorAll('.pay-method').forEach(function(m) { m.classList.remove('sel'); });
+  el.classList.add('sel');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROCESS PAYMENT — Real Razorpay or Cash
+// ══════════════════════════════════════════════════════════════
+async function processPayment() {
+  var btn    = document.getElementById('pay-btn');
+  var errEl  = document.getElementById('pay-error');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+
+  var sub      = +billData.subtotal || +billData.total;
+  var gst      = Math.round(sub * 0.05);
+  var discPct  = billData._discPct || 0;
+  var discAmt  = Math.round(sub * discPct / 100);
+  var finalAmt = Math.round(sub + gst - discAmt);
+
+  try {
+    if (selectedPay === 'cash') {
+      await handleCashPayment(finalAmt);
+    } else {
+      await handleRazorpayPayment(finalAmt, discPct);
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Pay ₹' + num(finalAmt) + ' →';
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ── CASH FLOW ─────────────────────────────────────────────────
+async function handleCashPayment(finalAmt) {
+  await api('POST', '/payments/public/cash', { bill_id: billId });
+
+  // Show cash screen
+  document.getElementById('cash-amt').textContent      = '₹' + num(finalAmt);
+  document.getElementById('cash-bill-num').textContent = billData.bill_number;
+  document.getElementById('gst-invoice-cash').innerHTML = buildGSTInvoice(finalAmt);
+  document.getElementById('gst-invoice-print').innerHTML = buildGSTInvoice(finalAmt);
+
+  if (selectedRating <= 3 && selectedRating > 0) {
+    showApologyAfterPayment();
+  } else {
+    showScreen('cash');
+    setStepsDone();
+  }
+}
+
+// ── RAZORPAY FLOW ─────────────────────────────────────────────
+async function handleRazorpayPayment(finalAmt, discPct) {
+  // Step 1: Create Razorpay order
+  var orderRes = await api('POST', '/payments/public/create-order', {
+    bill_id:     billId,
+    amount_paise: finalAmt * 100,
+  });
+  var order = orderRes.data;
+
+  // Step 2: Open Razorpay checkout on customer's phone
+  return new Promise(function(resolve, reject) {
+    var options = {
+      key:         order.key_id,
+      amount:      order.amount,
+      currency:    'INR',
+      name:        order.restaurant_name || 'SmartReview',
+      description: 'Bill #' + order.bill_number,
+      order_id:    order.order_id,
+      prefill: {
+        contact: billData.customer_phone || '',
+      },
+      theme: { color: '#4A3CCC' },
+
+      // Step 3: Payment success
+      handler: async function(response) {
+        try {
+          var verifyRes = await api('POST', '/payments/public/verify', {
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature:  response.razorpay_signature,
+            bill_id:             billId,
+            method:              selectedPay,
+            discount_pct:        discPct,
+            final_amount:        finalAmt,
+          });
+
+          paymentResult = verifyRes.data;
+          onPaymentSuccess(finalAmt, discPct);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      },
+
+      // Payment failed / dismissed
+      modal: {
+        ondismiss: function() {
+          reject(new Error('Payment cancelled. Please try again.'));
+        }
+      }
+    };
+
+    var rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(resp) {
+      reject(new Error('Payment failed: ' + (resp.error.description || 'Unknown error')));
+    });
+    rzp.open();
+  });
+}
+
+function onPaymentSuccess(finalAmt, discPct) {
+  // Build GST invoice
+  var invoiceHTML = buildGSTInvoice(finalAmt, discPct);
+  document.getElementById('gst-invoice-success').innerHTML = invoiceHTML;
+  document.getElementById('gst-invoice-print').innerHTML   = invoiceHTML;
+
+  // Set success screen content
+  document.getElementById('suc-rest-name').textContent = billData.restaurant_name || 'us';
+  if (discPct > 0) {
+    document.getElementById('disc-badge-wrap').style.display = 'block';
+    document.getElementById('disc-badge-val').textContent    = discPct + '% saved!';
+  }
+
+  if (selectedRating <= 3 && selectedRating > 0) {
+    showApologyAfterPayment();
+  } else {
+    showScreen('success');
+    setStepsDone();
+  }
+}
+
+function showApologyAfterPayment() {
+  // Show complaint chips on apology screen
+  if (selectedComps.length > 0) {
+    document.getElementById('comp-confirm-section').style.display = 'block';
+    document.getElementById('comp-confirm-chips').innerHTML = selectedComps.map(function(c) {
+      return '<span class="comp-chip-confirmed">' + c + '</span>';
+    }).join('');
+  }
+  var gUrl = document.getElementById('apology-google-btn').dataset.gurl;
+  if (!gUrl) document.getElementById('apology-google-btn').style.display = 'none';
+  showScreen('apology');
+  setStepsDone();
+}
+
+// ── Apology actions ──
+function openGoogleFromApology() {
+  var gUrl = document.getElementById('apology-google-btn').dataset.gurl;
+  if (gUrl) window.open(gUrl, '_blank');
+  showScreen('done');
+}
+function skipFromApology() { showScreen('done'); }
+
+// ══════════════════════════════════════════════════════════════
+//  GST INVOICE BUILDER
+// ══════════════════════════════════════════════════════════════
+function buildGSTInvoice(finalAmt, discPct) {
+  if (!billData) return '';
+  discPct = discPct || 0;
+  var sub       = +billData.subtotal || +billData.total;
+  var discAmt   = Math.round(sub * discPct / 100);
+  var taxableAmt= sub - discAmt;
+  var cgst      = Math.round(taxableAmt * 0.025); // 2.5%
+  var sgst      = Math.round(taxableAmt * 0.025); // 2.5%
+  var total     = taxableAmt + cgst + sgst;
+  var now       = new Date();
+  var dateStr   = now.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+  var timeStr   = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+  var items     = billData.items || [];
+
+  var gstin  = billData.gstin ? billData.gstin : null;
+  var gstinLine = gstin
+    ? '<div>GSTIN: <strong>' + gstin + '</strong> <span class="badge-gstin">GST Registered</span></div>'
+    : '<div style="color:var(--gray);font-size:.7rem">GSTIN not configured</div>';
+
+  var itemRows = items.map(function(i) {
+    return '<div class="invoice-row"><span>' + (i.name||'Item') + (i.qty>1?' x'+i.qty:'') + '</span><span>₹' + num(i.price*(i.qty||1)) + '</span></div>';
+  }).join('');
+
+  var discRow = discPct > 0
+    ? '<div class="invoice-row disc"><span>Google Review Discount (-' + discPct + '%)</span><span>-₹' + num(discAmt) + '</span></div>'
+    : '';
+
+  return '<div class="invoice-wrap">' +
+    '<div class="invoice-header">' +
+      '<div class="invoice-rest-name">' + (billData.restaurant_name||'Restaurant') + '</div>' +
+      '<div>' + (billData.restaurant_address||'') + '</div>' +
+      gstinLine +
+    '</div>' +
+    '<div class="invoice-row"><span>Bill No:</span><span>' + billData.bill_number + '</span></div>' +
+    '<div class="invoice-row"><span>Date:</span><span>' + dateStr + '  ' + timeStr + '</span></div>' +
+    '<div class="invoice-row"><span>Table:</span><span>' + (billData.table_number||'—') + '</span></div>' +
+    (paymentResult ? '<div class="invoice-row"><span>Txn ID:</span><span>' + paymentResult.payment_id.slice(-8) + '</span></div>' : '') +
+    '<hr class="invoice-divider">' +
+    '<div class="invoice-row bold"><span>ITEM</span><span>AMOUNT</span></div>' +
+    itemRows +
+    '<hr class="invoice-divider">' +
+    '<div class="invoice-row"><span>Subtotal</span><span>₹' + num(sub) + '</span></div>' +
+    discRow +
+    '<div class="invoice-row"><span>Taxable amount</span><span>₹' + num(taxableAmt) + '</span></div>' +
+    '<div class="invoice-row"><span>CGST @ 2.5%</span><span>₹' + num(cgst) + '</span></div>' +
+    '<div class="invoice-row"><span>SGST @ 2.5%</span><span>₹' + num(sgst) + '</span></div>' +
+    '<div class="invoice-row total bold"><span>TOTAL</span><span>₹' + num(total) + '</span></div>' +
+    '<hr class="invoice-divider">' +
+    '<div class="invoice-footer">' +
+      'Thank you for dining with us! 🙏<br>' +
+      'This is a computer-generated invoice.' +
+    '</div>' +
+  '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PRINT INVOICE
+// ══════════════════════════════════════════════════════════════
+function printInvoice() {
+  // Show print screen and trigger browser print
+  document.getElementById('scr-invoice').style.display = 'block';
+  window.print();
+  document.getElementById('scr-invoice').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOTALS RENDERERS
+// ══════════════════════════════════════════════════════════════
+function renderTotals(sub, gst, discPct, discAmt) {
+  var disc = discAmt || Math.round(sub * (discPct||0) / 100);
+  var tot  = sub + gst - disc;
+  var discRow = disc > 0
+    ? '<div class="total-row disc"><span>Discount (' + discPct + '% Google review)</span><span>-₹' + num(disc) + '</span></div>'
+    : '';
+  document.getElementById('bill-totals').innerHTML =
+    '<div class="totals-box">' +
+    '<div class="total-row"><span>Subtotal</span><span>₹' + num(sub) + '</span></div>' +
+    '<div class="total-row"><span>GST (5%)</span><span>₹' + num(gst) + '</span></div>' +
+    discRow +
+    '<div class="total-row main"><span>Total</span><span>₹' + num(tot) + '</span></div>' +
+    '</div>';
+}
+
+function renderPaySummary(sub, gst, discPct, discAmt) {
+  var disc = discAmt || Math.round(sub * (discPct||0) / 100);
+  var tot  = sub + gst - disc;
+  document.getElementById('pay-btn-amt').textContent = '₹' + num(tot);
+  var discRow = disc > 0
+    ? '<div class="total-row disc"><span>Discount (' + discPct + '%)</span><span>-₹' + num(disc) + '</span></div>'
+    : '';
+  document.getElementById('pay-summary').innerHTML =
+    '<div class="total-row"><span>Subtotal</span><span>₹' + num(sub) + '</span></div>' +
+    '<div class="total-row"><span>GST (5%)</span><span>₹' + num(gst) + '</span></div>' +
+    discRow +
+    '<div class="total-row main"><span>Pay now</span><span>₹' + num(tot) + '</span></div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SCREEN NAVIGATION
+// ══════════════════════════════════════════════════════════════
+var STEP_MAP = {
+  'bill':      ['s-bill'],
+  'gate':      ['s-bill','s-rate'],
+  'complaint': ['s-bill','s-rate'],
+  'pay':       ['s-bill','s-rate','s-pay'],
+  'success':   ['s-bill','s-rate','s-pay','s-done'],
+  'cash':      ['s-bill','s-rate','s-pay','s-done'],
+  'apology':   ['s-bill','s-rate','s-pay','s-done'],
+  'done':      ['s-bill','s-rate','s-pay','s-done'],
+};
+var HDR_TITLES = {
+  'bill':'Your Bill','gate':'Leave a Review','complaint':'Your Feedback',
+  'pay':'Payment','success':'Payment Done!','cash':'Pay at Counter',
+  'apology':'Thank You','done':'Thank You'
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  var el = document.getElementById('scr-' + id);
+  if (el) el.classList.add('active');
+  document.getElementById('hdr-title').textContent = HDR_TITLES[id] || '';
+  var active = STEP_MAP[id] || [];
+  ['s-bill','s-rate','s-pay','s-done'].forEach(function(s) {
+    var el = document.getElementById(s);
+    el.classList.remove('active','done');
+    var isActive = active[active.length-1] === s;
+    if (isActive)                              el.classList.add('active');
+    else if (active.indexOf(s) !== -1)         el.classList.add('done');
+  });
+  window.scrollTo(0, 0);
+}
+
+function setStepsDone() {
+  ['s-bill','s-rate','s-pay','s-done'].forEach(function(s) {
+    var el = document.getElementById(s);
+    el.classList.remove('active');
+    el.classList.add('done');
+  });
+}
+
+function showError(msg) {
+  document.getElementById('bill-items').innerHTML =
+    '<div class="error-wrap"><div class="error-emoji">⚠️</div>' +
+    '<p style="font-size:.9rem;color:var(--gray)">' + msg + '</p></div>';
+}
+
+// Number formatter — Indian locale
+function num(n) {
+  return Number(n||0).toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+</script>
+</body>
+</html>

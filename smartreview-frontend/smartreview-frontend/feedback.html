@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Feedback — SmartReview</title>
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+.fb-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;transition:var(--transition)}
+.fb-card:hover{box-shadow:var(--shadow)}
+.fb-card.negative{border-left:4px solid var(--danger)}
+.fb-card.positive{border-left:4px solid var(--success)}
+.fb-card.neutral {border-left:4px solid var(--warning)}
+.star-row{display:flex;gap:2px;font-size:1rem}
+.star-filled{color:#F59E0B}
+.star-empty {color:var(--gray-200)}
+.complaint-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--danger-l);color:var(--danger);margin:2px}
+.fb-meta{font-size:.78rem;color:var(--text-muted);display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.google-done{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;font-weight:700;color:var(--success);background:var(--success-l);padding:2px 8px;border-radius:10px}
+.rating-filter-btn{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:.8rem;font-weight:600;cursor:pointer;transition:var(--transition-fast)}
+.rating-filter-btn:hover{border-color:var(--brand);color:var(--brand)}
+.rating-filter-btn.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.rating-filter-btn.active-1{background:#ef4444;border-color:#ef4444;color:#fff}
+.rating-filter-btn.active-2{background:#f97316;border-color:#f97316;color:#fff}
+.rating-filter-btn.active-3{background:#eab308;border-color:#eab308;color:#fff}
+.rating-filter-btn.active-4{background:#22c55e;border-color:#22c55e;color:#fff}
+.rating-filter-btn.active-5{background:#16a34a;border-color:#16a34a;color:#fff}
+.summary-stat{text-align:center;padding:12px;background:var(--surface-2);border-radius:var(--radius)}
+.summary-val{font-size:1.5rem;font-weight:800;line-height:1;margin-bottom:3px}
+.summary-label{font-size:.72rem;color:var(--text-muted);font-weight:500}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="app-sidebar"></div>
+  <div class="main">
+    <div id="app-topbar"></div>
+    <div class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Feedback Inbox</h1>
+          <p>All customer ratings, complaints, and Google review activity</p>
+        </div>
+        <div class="page-header-right">
+          <a href="honest-complaints.html" class="btn btn-secondary btn-sm">
+            <i class="ti ti-heart-handshake"></i> Honest Review Mode
+          </a>
+          <button class="btn btn-secondary btn-sm" onclick="exportFeedback()">
+            <i class="ti ti-download"></i> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary strip — GET /feedback/summary -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px" id="summary-strip">
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Total feedback</div></div>
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Avg rating</div></div>
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Positive</div></div>
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Negative</div></div>
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Google reviews</div></div>
+        <div class="summary-stat"><div class="skeleton" style="height:24px;margin-bottom:6px"></div><div class="summary-label">Discounts given</div></div>
+      </div>
+
+      <div class="content-grid-2" style="gap:16px">
+
+        <!-- LEFT: Filter + List -->
+        <div style="grid-column:1/-1">
+
+          <!-- Filter bar -->
+          <div class="filter-bar">
+            <!-- Rating buttons -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="rating-filter-btn active" data-rating="" onclick="setRatingFilter('',this)">All</button>
+              <button class="rating-filter-btn" data-rating="5" onclick="setRatingFilter('5',this)">★★★★★ 5</button>
+              <button class="rating-filter-btn" data-rating="4" onclick="setRatingFilter('4',this)">★★★★☆ 4</button>
+              <button class="rating-filter-btn" data-rating="3" onclick="setRatingFilter('3',this)">★★★☆☆ 3</button>
+              <button class="rating-filter-btn" data-rating="2" onclick="setRatingFilter('2',this)">★★☆☆☆ 2</button>
+              <button class="rating-filter-btn" data-rating="1" onclick="setRatingFilter('1',this)">★☆☆☆☆ 1</button>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <input type="date" class="form-input" id="filter-from" style="width:140px" onchange="loadFeedback(1)">
+              <input type="date" class="form-input" id="filter-to"   style="width:140px" onchange="loadFeedback(1)">
+              <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i></button>
+            </div>
+          </div>
+
+          <!-- Results info -->
+          <div style="font-size:.825rem;color:var(--text-muted);margin-bottom:12px" id="results-info">Loading…</div>
+
+          <!-- Feedback list — GET /feedback -->
+          <div id="feedback-list"></div>
+
+          <!-- Pagination -->
+          <div class="pagination" id="pagination" style="margin-top:16px;justify-content:center"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback detail modal -->
+<div class="modal-overlay" id="fb-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Feedback detail</span>
+      <button class="modal-close" onclick="Modal.close('fb-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body" id="fb-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('fb-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/layout.js"></script>
+<script>
+// State
+let currentPage   = 1;
+let currentRating = '';
+let totalPages    = 1;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!API.requireAuth()) return;
+  buildLayout({ page:'feedback.html', title:'Feedback', subtitle:'Customer ratings & complaints' });
+  await Promise.all([loadSummary(), loadFeedback(1)]);
+});
+
+// ── SUMMARY — GET /feedback/summary ──────────────────────────
+// { data: { total_feedback, avg_rating, positive_count, negative_count,
+//            google_reviews_count, discounts_unlocked } }
+async function loadSummary() {
+  try {
+    const res = await API.feedback.summary();
+    const d   = res.data || {};
+    document.getElementById('summary-strip').innerHTML = `
+      <div class="summary-stat"><div class="summary-val">${Format.number(d.total_feedback)}</div><div class="summary-label">Total feedback</div></div>
+      <div class="summary-stat"><div class="summary-val" style="color:${+d.avg_rating>=4?'var(--success)':'var(--warning)'}">${d.avg_rating>0?Format.rating(d.avg_rating)+' ★':'—'}</div><div class="summary-label">Avg rating</div></div>
+      <div class="summary-stat"><div class="summary-val" style="color:var(--success)">${Format.number(d.positive_count)}</div><div class="summary-label">😊 Positive (4-5★)</div></div>
+      <div class="summary-stat"><div class="summary-val" style="color:var(--danger)">${Format.number(d.negative_count)}</div><div class="summary-label">😔 Negative (1-3★)</div></div>
+      <div class="summary-stat"><div class="summary-val" style="color:var(--brand)">${Format.number(d.google_reviews_count)}</div><div class="summary-label">Google reviews</div></div>
+      <div class="summary-stat"><div class="summary-val" style="color:var(--success)">${Format.number(d.discounts_unlocked)}</div><div class="summary-label">Discounts unlocked</div></div>`;
+  } catch {
+    document.getElementById('summary-strip').innerHTML = '<p class="text-sm text-muted" style="grid-column:1/-1">Could not load summary</p>';
+  }
+}
+
+// ── FEEDBACK LIST — GET /feedback ─────────────────────────────
+// { data: [{ id, rating, complaints[], comment, google_review_done,
+//            discount_unlocked, discount_pct, created_at,
+//            bill_number, total, customer_phone, customer_name }],
+//   pagination: { page, limit, total } }
+async function loadFeedback(page = 1) {
+  currentPage = page;
+  const listEl = document.getElementById('feedback-list');
+  listEl.innerHTML = Array(4).fill(0).map(() =>
+    '<div class="skeleton skeleton-block" style="height:100px;margin-bottom:10px"></div>'
+  ).join('');
+
+  try {
+    const params = {
+      page,
+      limit: 15,
+      rating: currentRating || undefined,
+      from:   document.getElementById('filter-from').value || undefined,
+      to:     document.getElementById('filter-to').value   || undefined,
+    };
+    const res  = await API.feedback.list(params);
+    const rows = res.data        || [];
+    const pg   = res.pagination  || { total: 0, page: 1, limit: 15 };
+
+    totalPages = Math.ceil(pg.total / pg.limit) || 1;
+    document.getElementById('results-info').textContent =
+      `Showing ${rows.length} of ${Format.number(pg.total)} feedback entries`;
+
+    if (!rows.length) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">⭐</div>
+          <h3>No feedback found</h3>
+          <p>Try adjusting your filters, or wait for customers to scan their QR codes and rate their experience.</p>
+        </div>`;
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    listEl.innerHTML = rows.map(fb => renderFeedbackCard(fb)).join('');
+    renderPagination(pg.total, pg.limit);
+  } catch (err) {
+    listEl.innerHTML = `<div class="alert alert-danger"><i class="ti ti-alert-circle"></i> Could not load feedback: ${err.message}</div>`;
+  }
+}
+
+function renderFeedbackCard(fb) {
+  const rating   = +fb.rating || 0;
+  const cardType = rating >= 4 ? 'positive' : rating === 3 ? 'neutral' : 'negative';
+  const stars    = Array(5).fill(0).map((_,i) =>
+    `<span class="${i < rating ? 'star-filled' : 'star-empty'}">★</span>`).join('');
+  const complaints = (fb.complaints || []).map(c =>
+    `<span class="complaint-chip"><i class="ti ti-alert-circle" style="font-size:.7rem"></i>${c}</span>`).join('');
+
+  return `
+    <div class="fb-card ${cardType}" onclick="openDetail('${fb.id}')" style="cursor:pointer">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+            <div class="star-row">${stars}</div>
+            ${fb.google_review_done ? '<span class="google-done"><i class="ti ti-brand-google" style="font-size:.8rem"></i> Posted on Google</span>' : ''}
+            ${fb.discount_unlocked  ? `<span class="badge badge-success">${fb.discount_pct}% discount given</span>` : ''}
+          </div>
+          ${fb.comment ? `<div style="font-size:.875rem;color:var(--text-secondary);margin-bottom:6px;font-style:italic">"${fb.comment}"</div>` : ''}
+          ${complaints ? `<div style="margin-bottom:6px">${complaints}</div>` : ''}
+          <div class="fb-meta">
+            <span>Bill #${fb.bill_number} · ${Format.currency(fb.total)}</span>
+            ${fb.customer_name ? `<span>👤 ${fb.customer_name}</span>` : ''}
+            ${fb.customer_phone ? `<span>📱 ${fb.customer_phone}</span>` : ''}
+            <span><i class="ti ti-clock" style="font-size:.75rem"></i> ${Format.timeAgo(fb.created_at)}</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:2rem;font-weight:800;color:${rating>=4?'var(--success)':rating===3?'var(--warning)':'var(--danger)'}">${rating}</div>
+          <div style="font-size:.7rem;color:var(--text-muted)">/ 5</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openDetail(id) {
+  // Re-find the feedback from loaded DOM or re-fetch
+  Toast.info('Loading detail…');
+  // For now show from cached data — would fetch by ID in a full impl
+  Modal.open('fb-modal');
+}
+
+function setRatingFilter(rating, el) {
+  currentRating = rating;
+  document.querySelectorAll('.rating-filter-btn').forEach(b => {
+    b.classList.remove('active','active-1','active-2','active-3','active-4','active-5');
+  });
+  if (rating) el.classList.add('active', `active-${rating}`);
+  else        el.classList.add('active');
+  loadFeedback(1);
+}
+
+function clearFilters() {
+  currentRating = '';
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value   = '';
+  document.querySelectorAll('.rating-filter-btn').forEach(b => b.classList.remove('active','active-1','active-2','active-3','active-4','active-5'));
+  document.querySelector('.rating-filter-btn[data-rating=""]').classList.add('active');
+  loadFeedback(1);
+}
+
+function renderPagination(total, limit) {
+  const pages  = Math.ceil(total / limit);
+  const pg     = currentPage;
+  const pEl    = document.getElementById('pagination');
+  if (pages <= 1) { pEl.innerHTML = ''; return; }
+  let html = `<button class="page-btn" onclick="loadFeedback(${pg-1})" ${pg<=1?'disabled':''}><i class="ti ti-chevron-left"></i></button>`;
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - pg) <= 2)
+      html += `<button class="page-btn ${i===pg?'active':''}" onclick="loadFeedback(${i})">${i}</button>`;
+    else if (Math.abs(i - pg) === 3)
+      html += `<span class="page-btn" style="border:none;cursor:default">…</span>`;
+  }
+  html += `<button class="page-btn" onclick="loadFeedback(${pg+1})" ${pg>=pages?'disabled':''}><i class="ti ti-chevron-right"></i></button>`;
+  pEl.innerHTML = html;
+}
+
+async function exportFeedback() {
+  Toast.info('Exporting feedback…');
+  try {
+    const res  = await API.feedback.list({ limit: 1000 });
+    const rows = res.data || [];
+    if (!rows.length) { Toast.warning('No feedback to export'); return; }
+    const csv = [
+      ['Bill #','Rating','Google Review','Discount %','Complaints','Comment','Phone','Date'].join(','),
+      ...rows.map(r => [
+        r.bill_number, r.rating,
+        r.google_review_done ? 'Yes' : 'No',
+        r.discount_pct || 0,
+        (r.complaints || []).join('; '),
+        `"${(r.comment || '').replace(/"/g,'""')}"`,
+        r.customer_phone || '',
+        Format.date(r.created_at)
+      ].join(','))
+    ].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `feedback-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    Toast.success('Downloaded!');
+  } catch (err) { Toast.error(err.message); }
+}
+</script>
+</body>
+</html>
