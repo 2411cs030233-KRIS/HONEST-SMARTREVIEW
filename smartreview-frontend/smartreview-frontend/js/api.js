@@ -9,7 +9,7 @@
 const API = (() => {
 
   // ── CONFIG ────────────────────────────────────────────────
-  const BASE  = (window.SR_CONFIG?.API_URL) || 'http://localhost:3000/api/v1';
+ const BASE = (window.SR_CONFIG?.API_URL) || 'https://honest-smartreview-production.up.railway.app/api/v1';
   const TOKEN_KEY   = 'sr_access_token';
   const USER_KEY    = 'sr_user';
 
