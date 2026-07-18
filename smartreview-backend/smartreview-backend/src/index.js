@@ -41,11 +41,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Rate limiter (skip for webhooks) ─────────────────────────
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { error: 'Too many requests. Try again later.' },
+});
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/webhooks')) return next();
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 300,
-    message: { error: 'Too many requests. Try again later.' },
-  })(req, res, next);
+  limiter(req, res, next);
 });
 
 // ── Health check ─────────────────────────────────────────────
