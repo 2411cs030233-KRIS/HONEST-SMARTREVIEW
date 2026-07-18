@@ -32,7 +32,9 @@ const API  = '/api/v1';
 // ── Security & middleware ────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3001'],
+  origin: process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3001'],
   credentials: true,
 }));
 app.use(compression());
@@ -51,7 +53,6 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/webhooks')) return next();
   limiter(req, res, next);
 });
-
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({
   status: 'ok', version: '1.0.0',
